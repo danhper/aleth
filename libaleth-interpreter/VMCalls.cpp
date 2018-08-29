@@ -146,8 +146,7 @@ void VM::caseCreate()
         msg.kind = m_OP == Instruction::CREATE ? EVMC_CREATE : EVMC_CREATE2;  // FIXME: In EVMC move the kind to the top.
         msg.value = toEvmC(endowment);
 
-        evmc_result result;
-        m_context->fn_table->call(&result, m_context, &msg);
+        evmc_result result = m_context->fn_table->call(m_context, &msg);
 
         if (result.status_code == EVMC_SUCCESS)
             m_SPP[0] = fromAddress(fromEvmC(result.create_address));
@@ -177,8 +176,7 @@ void VM::caseCall()
     bytesRef output;
     if (caseCallSetup(msg, output))
     {
-        evmc_result result;
-        m_context->fn_table->call(&result, m_context, &msg);
+        evmc_result result = m_context->fn_table->call(m_context, &msg);
 
         m_returnData.assign(result.output_data, result.output_data + result.output_size);
         bytesConstRef{&m_returnData}.copyTo(output);

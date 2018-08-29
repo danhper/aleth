@@ -166,7 +166,7 @@ void getBlockHash(evmc_uint256be* o_hash, evmc_context* _envPtr, int64_t _number
     *o_hash = toEvmC(env.blockHash(_number));
 }
 
-void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) noexcept
+evmc_result create(ExtVMFace& _env, evmc_message const* _msg) noexcept
 {
     u256 gas = _msg->gas;
     u256 value = fromEvmC(_msg->value);
@@ -177,16 +177,15 @@ void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) no
     // ExtVM::create takes the sender address from .myAddress.
     assert(fromEvmC(_msg->sender) == _env.myAddress);
 
-    CreateResult result = _env.create(value, gas, init, opcode, salt, {});
-    o_result->status_code = result.status;
-    o_result->gas_left = static_cast<int64_t>(gas);
-    o_result->release = nullptr;
+    CreateResult createResult = _env.create(value, gas, init, opcode, salt, {});
 
-    if (result.status == EVMC_SUCCESS)
+    evmc_result result{};
+    result.status_code = createResult.status;
+    result.gas_left = static_cast<int64_t>(gas);
+
+    if (createResult.status == EVMC_SUCCESS)
     {
-        o_result->create_address = toEvmC(result.address);
-        o_result->output_data = nullptr;
-        o_result->output_size = 0;
+        result.create_address = toEvmC(createResult.address);
     }
     else
     {
@@ -195,15 +194,15 @@ void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) no
 
         // First assign reference. References are not invalidated when vector
         // of bytes is moved. See `.takeBytes()` below.
-        o_result->output_data = result.output.data();
-        o_result->output_size = result.output.size();
+        result.output_data = createResult.output.data();
+        result.output_size = createResult.output.size();
 
         // Place a new vector of bytes containing output in result's reserved memory.
-        auto* data = evmc_get_optional_storage(o_result);
+        auto* data = evmc_get_optional_storage(&result);
         static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
-        new(data) bytes(result.output.takeBytes());
+        new(data) bytes(createResult.output.takeBytes());
         // Set the destructor to delete the vector.
-        o_result->release = [](evmc_result const* _result)
+        result.release = [](evmc_result const* _result)
         {
             auto* data = evmc_get_const_optional_storage(_result);
             auto& output = reinterpret_cast<bytes const&>(*data);
@@ -212,16 +211,17 @@ void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) no
             output.~bytes();
         };
     }
+    return result;
 }
 
-void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _msg) noexcept
+evmc_result call(evmc_context* _context, evmc_message const* _msg) noexcept
 {
     assert(_msg->gas >= 0 && "Invalid gas value");
     auto& env = static_cast<ExtVMFace&>(*_context);
 
     // Handle CREATE separately.
     if (_msg->kind == EVMC_CREATE || _msg->kind == EVMC_CREATE2)
-        return create(o_result, env, _msg);
+        return create(env, _msg);
 
     CallParameters params;
     params.gas = _msg->gas;
@@ -236,24 +236,25 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
     params.staticCall = (_msg->flags & EVMC_STATIC) != 0;
     params.onOp = {};
 
-    CallResult result = env.call(params);
-    o_result->status_code = result.status;
-    o_result->gas_left = static_cast<int64_t>(params.gas);
+    CallResult callResult = env.call(params);
+    evmc_result result{};
+    result.status_code = callResult.status;
+    result.gas_left = static_cast<int64_t>(params.gas);
 
     // Pass the output to the EVM without a copy. The EVM will delete it
     // when finished with it.
 
     // First assign reference. References are not invalidated when vector
     // of bytes is moved. See `.takeBytes()` below.
-    o_result->output_data = result.output.data();
-    o_result->output_size = result.output.size();
+    result.output_data = callResult.output.data();
+    result.output_size = callResult.output.size();
 
     // Place a new vector of bytes containing output in result's reserved memory.
-    auto* data = evmc_get_optional_storage(o_result);
+    auto* data = evmc_get_optional_storage(&result);
     static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
-    new(data) bytes(result.output.takeBytes());
+    new(data) bytes(callResult.output.takeBytes());
     // Set the destructor to delete the vector.
-    o_result->release = [](evmc_result const* _result)
+    result.release = [](evmc_result const* _result)
     {
         auto* data = evmc_get_const_optional_storage(_result);
         auto& output = reinterpret_cast<bytes const&>(*data);
@@ -261,6 +262,7 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
         // This is normal pattern when placement new operator is used.
         output.~bytes();
     };
+    return result;
 }
 
 evmc_context_fn_table const fnTable = {
