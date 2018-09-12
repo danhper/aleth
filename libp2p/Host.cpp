@@ -238,26 +238,23 @@ bool Host::isRequiredPeer(NodeID const& _id) const
 void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXFrameCoder>&& _io, std::shared_ptr<RLPXSocket> const& _s)
 {
     // session maybe ingress or egress so m_peers and node table entries may not exist
-    shared_ptr<Peer> p;
+    shared_ptr<Peer> peer;
     DEV_RECURSIVE_GUARDED(x_sessions)
     {
-        if (m_peers.count(_id))
-            p = m_peers[_id];
+        auto const itPeer = m_peers.find(_id);
+        auto const remoteAddress = _s->remoteEndpoint().address();
+        auto const remoteTcpPort = _s->remoteEndpoint().port();
+        if (itPeer != m_peers.end() && itPeer->second->endpoint.address() == remoteAddress &&
+            itPeer->second->endpoint.tcpPort() == remoteTcpPort)
+            peer = itPeer->second;
         else
         {
-            // peer doesn't exist, try to get port info from node table
-            if (Node n = nodeFromNodeTable(_id))
-                p = make_shared<Peer>(n);
-
-            if (!p)
-                p = make_shared<Peer>(Node(_id, UnspecifiedNodeIPEndpoint));
-
-            m_peers[_id] = p;
+            peer = make_shared<Peer>(Node{_id, NodeIPEndpoint{remoteAddress, 0, remoteTcpPort}});
+            m_peers[_id] = peer;
         }
     }
-    if (p->isOffline())
-        p->m_lastConnected = std::chrono::system_clock::now();
-    p->endpoint.setAddress(_s->remoteEndpoint().address());
+    if (peer->isOffline())
+        peer->m_lastConnected = std::chrono::system_clock::now();
 
     auto protocolVersion = _rlp[0].toInt<unsigned>();
     auto clientVersion = _rlp[1].toString();
@@ -285,8 +282,8 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
             << " " << _id << " " << showbase << capslog.str() << " " << dec << listenPort;
 
     // create session so disconnects are managed
-    shared_ptr<SessionFace> ps = make_shared<Session>(this, move(_io), _s, p,
-        PeerSessionInfo({_id, clientVersion, p->endpoint.address().to_string(), listenPort,
+    shared_ptr<SessionFace> ps = make_shared<Session>(this, move(_io), _s, peer,
+        PeerSessionInfo({_id, clientVersion, peer->endpoint.address().to_string(), listenPort,
             chrono::steady_clock::duration(), _rlp[2].toSet<CapDesc>(), 0, map<string, string>(),
             protocolVersion}));
     if (protocolVersion < dev::p2p::c_protocolVersion - 1)
