@@ -9,6 +9,7 @@
 #include "TransactionQueue.h"
 #include <libdevcore/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libp2p/Common.h>
 #include <libp2p/Host.h>
 #include <libp2p/Session.h>
 #include <chrono>
@@ -20,6 +21,8 @@ using namespace dev::eth;
 
 char const* const EthereumCapability::s_stateNames[static_cast<int>(SyncState::Size)] = {
     "NotSynced", "Idle", "Waiting", "Blocks", "State"};
+
+constexpr chrono::milliseconds c_backgroundWorkInterval{1000};
 
 namespace
 {
@@ -398,10 +401,16 @@ EthereumCapability::EthereumCapability(shared_ptr<p2p::CapabilityHostFace> _host
     m_urng = std::mt19937_64(seed());
 }
 
+chrono::milliseconds EthereumCapability::backgroundWorkInterval() const
+{
+    return c_backgroundWorkInterval;
+}
+
 void EthereumCapability::onStarting()
 {
     m_backgroundWorkEnabled = true;
-    m_host->scheduleExecution(c_backroundWorkPeriodMs, [this]() { doBackgroundWork(); });
+    m_host->scheduleCapabilityBackgroundWork(
+        p2p::CapDesc{name(), version()}, [this]() { doBackgroundWork(); });
 }
 
 void EthereumCapability::onStopping()
@@ -429,7 +438,7 @@ void EthereumCapability::reset()
 
     // reset() can be called from RPC handling thread,
     // but we access m_latestBlockSent and m_transactionsSent only from the network thread
-    m_host->scheduleExecution(0, [this]() {
+    m_host->postCapabilityWork(p2p::CapDesc{name(), version()}, [this]() {
         m_latestBlockSent = h256();
         m_transactionsSent.clear();
     });
@@ -474,7 +483,7 @@ void EthereumCapability::doBackgroundWork()
     }
 
     if (m_backgroundWorkEnabled)
-        m_host->scheduleExecution(c_backroundWorkPeriodMs, [this]() { doBackgroundWork(); });
+        m_host->scheduleCapabilityBackgroundWork(make_pair(name(), version()), [this]() { doBackgroundWork(); });
 }
 
 void EthereumCapability::maintainTransactions()
@@ -637,7 +646,7 @@ SyncStatus EthereumCapability::status() const
 void EthereumCapability::onTransactionImported(
     ImportResult _ir, h256 const& _h, h512 const& _nodeId)
 {
-    m_host->scheduleExecution(0, [this, _ir, _h, _nodeId]() {
+    m_host->postCapabilityWork(p2p::CapDesc{name(), version()}, [this, _ir, _h, _nodeId]() {
         auto itPeerStatus = m_peers.find(_nodeId);
         if (itPeerStatus == m_peers.end())
             return;

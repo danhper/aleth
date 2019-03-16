@@ -231,7 +231,8 @@ public:
     void forEachPeer(
         std::string const& _capabilityName, std::function<bool(NodeID const&)> _f) const;
 
-    void scheduleExecution(int _delayMs, std::function<void()> _f);
+    void scheduleCapabilityBackgroundWork(CapDesc const& _capDesc, std::function<void()> _f);
+    void postCapabilityWork(CapDesc const& _capdesc, std::function<void()> _f);
 
     std::shared_ptr<CapabilityHostFace> capabilityHost() const { return m_capabilityHost; }
 
@@ -339,11 +340,8 @@ private:
     unsigned m_stretchPeers = 7;										///< Accepted connection multiplier (max peers = ideal*stretch).
 
     /// Each of the capabilities we support.
-    std::map<CapDesc, std::shared_ptr<CapabilityFace>> m_capabilities;
-
-    /// Deadline timers used for isolated network events. GC'd by run.
-    std::list<std::unique_ptr<io::deadline_timer>> m_networkTimers;
-    Mutex x_networkTimers;
+    std::map<CapDesc, std::pair<std::shared_ptr<CapabilityFace>, std::unique_ptr<ba::steady_timer>>>
+        m_capabilities;
 
     std::chrono::steady_clock::time_point m_lastPing;						///< Time we sent the last ping to all peers.
     bool m_accepting = false;

@@ -162,11 +162,6 @@ void Host::doneWorking()
     // reset ioservice (cancels all timers and allows manually polling network, below)
     m_ioService.reset();
 
-    DEV_GUARDED(x_networkTimers)
-    {
-        m_networkTimers.clear();
-    }
-
     // shutdown acceptor
     m_tcp4Acceptor.cancel();
     if (m_tcp4Acceptor.is_open())
@@ -180,8 +175,11 @@ void Host::doneWorking()
         m_ioService.poll();
 
     // stop capabilities (eth: stops syncing or block/tx broadcast)
-    for (auto const& h: m_capabilities)
-        h.second->onStopping();
+    for (auto const& h : m_capabilities)
+    {
+        h.second.first->onStopping();
+        h.second.second->cancel();
+    }
 
     // disconnect pending handshake, before peers, as a handshake may create a peer
     for (unsigned n = 0;; n = 0)
@@ -325,7 +323,7 @@ void Host::startPeerSession(Public const& _id, RLP const& _rlp, unique_ptr<RLPXF
             if (itCap == m_capabilities.end())
                 return session->disconnect(IncompatibleProtocol);
 
-            auto capability = itCap->second;
+            auto capability = itCap->second.first;
             session->registerCapability(capDesc, offset, capability);
 
             cnetlog << "New session for capability " << capDesc.first << "; idOffset: " << offset;
@@ -490,7 +488,8 @@ void Host::registerCapability(
         cwarn << "Capabilities must be registered before the network is started";
         return;
     }
-    m_capabilities[{_name, _version}] = _cap;
+    m_capabilities[{_name, _version}] =
+        make_pair(_cap, move(unique_ptr<ba::steady_timer>{new ba::steady_timer{m_ioService}}));
 }
 
 void Host::addPeer(NodeSpec const& _s, PeerType _t)
@@ -684,12 +683,6 @@ void Host::run(boost::system::error_code const& _ec)
     // cleanup zombies
     DEV_GUARDED(x_connecting)
         m_connecting.remove_if([](weak_ptr<RLPXHandshake> h){ return h.expired(); });
-    DEV_GUARDED(x_networkTimers)
-    {
-        m_networkTimers.remove_if([](unique_ptr<io::deadline_timer> const& t) {
-            return t->expires_from_now().total_milliseconds() < 0;
-        });
-    }
 
     keepAlivePeers();
 
@@ -748,8 +741,8 @@ void Host::run(boost::system::error_code const& _ec)
 void Host::startedWorking()
 {
     // start capability threads (ready for incoming connections)
-    for (auto const& h: m_capabilities)
-        h.second->onStarting();
+    for (auto const& h : m_capabilities)
+        h.second.first->onStarting();
     
     if (haveCapabilities())
     {
@@ -1032,13 +1025,24 @@ void Host::forEachPeer(
             return;
 }
 
-void Host::scheduleExecution(int _delayMs, function<void()> _f)
+void Host::scheduleCapabilityBackgroundWork(CapDesc const& _capDesc, function<void()> _f)
 {
-    unique_ptr<io::deadline_timer> t(new io::deadline_timer(m_ioService));
-    t->expires_from_now(boost::posix_time::milliseconds(_delayMs));
-    t->async_wait([_f](boost::system::error_code const& _ec) {
+    auto cap = m_capabilities.find(_capDesc);
+    if (cap == m_capabilities.end())
+        BOOST_THROW_EXCEPTION(UnknownCapability());
+
+    ba::steady_timer* timer = cap->second.second.get();
+    timer->expires_from_now(chrono::milliseconds(cap->second.first->backgroundWorkInterval()));
+    timer->async_wait([_f](boost::system::error_code _ec) {
         if (!_ec)
             _f();
     });
-    DEV_GUARDED(x_networkTimers) { m_networkTimers.emplace_back(move(t)); }
+}
+
+void Host::postCapabilityWork(CapDesc const& _capDesc, function<void()> _f)
+{
+    if (m_capabilities.find(_capDesc) == m_capabilities.end())
+        BOOST_THROW_EXCEPTION(UnknownCapability());
+    
+    m_ioService.post(_f);
 }
