@@ -489,7 +489,7 @@ void Host::registerCapability(
         return;
     }
     m_capabilities[{_name, _version}] =
-        make_pair(_cap, move(unique_ptr<ba::steady_timer>{new ba::steady_timer{m_ioService}}));
+        make_pair(_cap, unique_ptr<ba::steady_timer>{new ba::steady_timer{m_ioService}});
 }
 
 void Host::addPeer(NodeSpec const& _s, PeerType _t)

@@ -30,7 +30,6 @@ constexpr unsigned c_maxSendTransactions = 256;
 constexpr unsigned c_maxHeadersToSend = 1024;
 constexpr unsigned c_maxIncomingNewHashes = 1024;
 constexpr unsigned c_peerTimeoutSeconds = 10;
-constexpr int c_backroundWorkPeriodMs = 1000;
 constexpr int c_minBlockBroadcastPeers = 4;
 
 string toString(Asking _a)
