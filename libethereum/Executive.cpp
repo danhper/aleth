@@ -504,8 +504,11 @@ bool Executive::go(OnOpFunc const& _onOp)
                     m_res->output = out.toVector(); // copy output to execution result
                 m_s.setCode(m_ext->myAddress, out.toVector(), m_ext->version);
             }
-            else
+            else {
+                SystemUsageStatCollector collector;
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
+                m_usageStat = collector.get_system_stat();
+            }
         }
         catch (RevertInstruction& _e)
         {

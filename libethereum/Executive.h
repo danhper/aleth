@@ -18,6 +18,7 @@
 
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
+#include <libdevcore/SystemUsageStatCollector.h>
 #include <libevm/VMFace.h>
 
 #include <json/json.h>
@@ -215,6 +216,8 @@ private:
 
     u256 m_gasCost;
     SealEngineFace const& m_sealEngine;
+
+    SystemUsageStat m_usageStat;
 
     bool m_isCreation = false;
     Address m_newAddress;
