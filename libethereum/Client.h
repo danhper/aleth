@@ -82,9 +82,7 @@ public:
         boost::filesystem::path const& _snapshotPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024}
-#if ETH_MEASURE_GAS
-        , std::ostream& statStream = std::cout
-#endif
+        ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream = std::cout)
     );
     /// Destructor.
     virtual ~Client();
@@ -391,6 +389,10 @@ protected:
 
     Logger m_logger{createLogger(VerbosityInfo, "client")};
     Logger m_loggerDetail{createLogger(VerbosityDebug, "client")};
+
+#ifdef ETH_MEASURE_GAS
+    std::ostream& m_statStream;
+#endif
 };
 
 }

@@ -60,18 +60,6 @@ struct PopulationStatistics
 DEV_SIMPLE_EXCEPTION(ChainOperationWithUnknownBlockChain);
 DEV_SIMPLE_EXCEPTION(InvalidOperationOnSealedBlock);
 
-
-#ifdef ETH_MEASURE_GAS
-#define STAT_STREAM_FULL_PARAM , std::ostream& _statStream = std::cout
-#define STAT_STREAM_PARAM , std::ostream& _statStream
-#define STAT_STREAM_ARG , _statStream
-#else
-#define STAT_STREAM_PARAM
-#define STAT_STREAM_FULL_PARAM
-#define STAT_STREAM_ARG
-#endif
-
-
 /**
  * @brief Active model of a block within the block chain.
  * Keeps track of all transactions, receipts and state for a particular block. Can apply all
@@ -89,27 +77,38 @@ public:
     // TODO: pass in ChainOperationParams rather than u256
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    Block(u256 const& _accountStartNonce): m_state(_accountStartNonce, OverlayDB(), BaseState::Empty), m_precommit(_accountStartNonce) {}
+    Block(u256 const& _accountStartNonce ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream))
+        : m_state(_accountStartNonce, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_statStream), BaseState::Empty),
+          m_precommit(_accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream))
+          ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream)) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a Block object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
     /// You can also set the author address.
-    Block(BlockChain const& _bc, OverlayDB const& _db, BaseState _bs = BaseState::PreExisting, Address const& _author = Address() STAT_STREAM_FULL_PARAM);
+    Block(BlockChain const& _bc, OverlayDB const& _db,
+          BaseState _bs = BaseState::PreExisting,
+          Address const& _author = Address());
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a Block object
     /// which uses it.
     /// Will throw InvalidRoot if the root passed is not in the database.
     /// You can also set the author address.
-    Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root, Address const& _author = Address() STAT_STREAM_FULL_PARAM);
+    Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root,
+          Address const& _author = Address()
+          );
 
     enum NullType { Null };
-    Block(NullType): m_state(0, OverlayDB(), BaseState::Empty), m_precommit(0) {}
+    Block(NullType
+        ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream)
+    ): m_state(0, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_statStream), BaseState::Empty),
+       m_precommit(0 ADD_IF_ETH_MEASURE_GAS(_statStream))
+       ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream)) {}
 
     /// Construct from a given blockchain. Empty, but associated with @a _bc 's chain params.
-    explicit Block(BlockChain const& _bc): Block(Null) { noteChain(_bc); }
+    explicit Block(BlockChain const& _bc);
 
     /// Copy state object.
     Block(Block const& _s);
@@ -326,6 +325,10 @@ private:
 
     Logger m_logger{createLogger(VerbosityDebug, "block")};
     Logger m_loggerDetailed{createLogger(VerbosityTrace, "block")};
+
+#ifdef ETH_MEASURE_GAS
+    std::ostream& m_statStream;
+#endif
 };
 
 

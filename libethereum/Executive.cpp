@@ -570,7 +570,12 @@ void Executive::outputResults(std::ostream& os)
         root["transaction"]["output_size"] = m_res->output.size();
         root["transaction"]["excepted"] = static_cast<int>(m_res->excepted);
     }
-    os << root;
+
+    Json::StreamWriterBuilder builder;
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+    writer->write(root, &os);
+    os << std::endl;
 }
 #endif
 

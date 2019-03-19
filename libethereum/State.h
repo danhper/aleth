@@ -40,6 +40,13 @@ namespace test { class ImportTest; class StateLoader; }
 namespace eth
 {
 
+#ifdef ETH_MEASURE_GAS
+#define ADD_IF_ETH_MEASURE_GAS(arg) , arg
+#else
+#define ADD_IF_ETH_MEASURE_GAS(arg)
+#endif
+
+
 // Import-specific errinfos
 using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
 using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
@@ -173,20 +180,22 @@ public:
     using AddressMap = std::map<h256, Address>;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(), BaseState::Empty) {}
+    explicit State(u256 const& _accountStartNonce ADD_IF_ETH_MEASURE_GAS(std::ostream& _stateStream))
+            : State(_accountStartNonce, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_stateStream), BaseState::Empty) {
+    }
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs = BaseState::PreExisting
-#ifdef ETH_MEASURE_GAS
-                   , std::ostream& _statStream = std::cout
-#endif
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db
+                   ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream),
+                   BaseState _bs = BaseState::PreExisting
     );
 
     enum NullType { Null };
-    State(NullType): State(Invalid256, OverlayDB(), BaseState::Empty) {}
+    State(NullType ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream))
+        : State(Invalid256, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_statStream), BaseState::Empty) {}
 
     /// Copy state object.
     State(State const& _s);
@@ -380,6 +389,7 @@ private:
 
 #ifdef ETH_MEASURE_GAS
     std::ostream& m_statStream;
+    boost::mutex m_statStreamLock;
 #endif
 };
 

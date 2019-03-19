@@ -203,7 +203,7 @@ Json::Value AdminEth::admin_eth_vmTrace(string const& _blockNumberOrHash, int _t
     if ((unsigned)_txIndex < block.pending().size())
     {
         Transaction t = block.pending()[_txIndex];
-        State s(State::Null);
+        State s(State::Null ADD_IF_ETH_MEASURE_GAS(m_eth.blockChain().statStream()));
         Executive e(s, block, _txIndex, m_eth.blockChain());
         try
         {
