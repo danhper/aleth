@@ -13,6 +13,10 @@
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
 
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/LoggingProgramOptions.h>
@@ -176,6 +180,10 @@ int main(int argc, char** argv)
 
     fs::path configFile = getDataDir() / fs::path("config.rlp");
     bytes b = contents(configFile);
+
+#ifdef ETH_MEASURE_GAS
+    fs::path measureGasPath("gas.jsonl.gz");
+#endif
 
     strings passwordsToNote;
     Secrets toImport;
@@ -689,6 +697,13 @@ int main(int argc, char** argv)
         }
     }
 
+#ifdef ETH_MEASURE_GAS
+    if (vm.count("gas-measurements-file"))
+    {
+        measureGasPath = vm["gas-measurements-file"].as<string>();
+    }
+#endif
+
     setupLogging(loggingOptions);
 
 
@@ -754,8 +769,19 @@ int main(int argc, char** argv)
     if (testingMode)
         chainParams.allowFutureBlocks = true;
 
+#ifdef ETH_MEASURE_GAS
+    std::ofstream file(measureGasPath.string(), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+    boost::iostreams::filtering_streambuf<boost::iostreams::output> out;
+    out.push(boost::iostreams::gzip_compressor());
+    out.push(file);
+    std::ostream statStream(&out);
+    #define STATSTREAM , statStream
+#else
+    #define STATSTREAM
+#endif
+
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
-        snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode);
+        snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode STATSTREAM);
 
     if (!extraData.empty())
         web3.ethereum()->setExtraData(extraData);
@@ -915,6 +941,7 @@ int main(int argc, char** argv)
     web3.setPeerStretch(peerStretch);
     std::shared_ptr<eth::TrivialGasPricer> gasPricer =
         make_shared<eth::TrivialGasPricer>(askPrice, bidPrice);
+
     Client& c = *(web3.ethereum());
     c.setGasPricer(gasPricer);
     c.setSealer(miner.minerType());

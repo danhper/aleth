@@ -27,6 +27,7 @@
 
 #include <json/json.h>
 
+#include <sstream>
 #include <numeric>
 
 using namespace std;
@@ -504,16 +505,15 @@ bool Executive::go(OnOpFunc const& _onOp)
                     m_res->output = out.toVector(); // copy output to execution result
                 m_s.setCode(m_ext->myAddress, out.toVector(), m_ext->version);
             }
-            else {
+            else
+            {
 #if ETH_MEASURE_GAS
                 SystemUsageStatCollector collector;
 #endif
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
 #if ETH_MEASURE_GAS
                 m_usageStat = collector.getSystemStat();
-                std::cout << "Memory allocated: " << m_usageStat.memoryAllocated << std::endl
-                          << "output size: " << m_output.toBytes().size() << std::endl
-                          << "extra memory allocated: " << m_usageStat.extraMemoryAllocated << std::endl;
+                m_usageStatCollected = true;
 #endif
             }
         }
@@ -565,6 +565,40 @@ bool Executive::go(OnOpFunc const& _onOp)
     }
     return true;
 }
+
+#ifdef ETH_MEASURE_GAS
+static std::string u256ToString(u256 value)
+{
+    stringstream ss;
+    ss << value;
+    return ss.str();
+}
+
+void Executive::outputResults(std::ostream& os)
+{
+    if (!m_usageStatCollected)
+    {
+        return;
+    }
+    Json::Value root;
+    root["usage"] = Json::Value();
+    root["usage"]["clock_time"] = m_usageStat.clockTime;
+    root["usage"]["user_time"] = m_usageStat.userTime;
+    root["usage"]["system_time"] = m_usageStat.systemTime;
+    root["usage"]["memory_allocated"] = m_usageStat.memoryAllocated;
+    root["usage"]["extra_memory_allocated"] = m_usageStat.extraMemoryAllocated;
+    if (m_res)
+    {
+        root["transaction"] = Json::Value();
+        root["transaction"]["gas_for_deposit"] = u256ToString(m_res->gasForDeposit);
+        root["transaction"]["gas_refunded"] = u256ToString(m_res->gasRefunded);
+        root["transaction"]["gas_used"] = u256ToString(m_res->gasUsed);
+        root["transaction"]["output_size"] = m_res->output.size();
+        root["transaction"]["excepted"] = static_cast<int>(m_res->excepted);
+    }
+    os << root;
+}
+#endif
 
 bool Executive::finalize()
 {

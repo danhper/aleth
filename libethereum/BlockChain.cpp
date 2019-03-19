@@ -169,9 +169,16 @@ static const unsigned c_maxCacheSize = 1024 * 1024 * 64;
 static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 
-BlockChain::BlockChain(ChainParams const& _p, fs::path const& _dbPath, WithExisting _we, ProgressCallback const& _pc):
+BlockChain::BlockChain(ChainParams const& _p, fs::path const& _dbPath, WithExisting _we, ProgressCallback const& _pc
+#ifdef ETH_MEASURE_GAS
+                       , std::ostream& _statStream
+#endif
+):
     m_lastBlockHashes(new LastBlockHashes(*this)),
     m_dbPath(_dbPath)
+#ifdef ETH_MEASURE_GAS
+    , m_statStream(_statStream)
+#endif
 {
     init(_p);
     open(_dbPath, _we, _pc);

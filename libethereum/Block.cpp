@@ -55,9 +55,8 @@ public:
 
 }
 
-
-Block::Block(BlockChain const& _bc, OverlayDB const& _db, BaseState _bs, Address const& _author):
-    m_state(Invalid256, _db, _bs),
+Block::Block(BlockChain const& _bc, OverlayDB const& _db, BaseState _bs, Address const& _author STAT_STREAM_PARAM):
+    m_state(Invalid256, _db, _bs STAT_STREAM_ARG),
     m_precommit(Invalid256),
     m_author(_author)
 {
@@ -67,8 +66,8 @@ Block::Block(BlockChain const& _bc, OverlayDB const& _db, BaseState _bs, Address
 //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root, Address const& _author):
-    m_state(Invalid256, _db, BaseState::PreExisting),
+Block::Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root, Address const& _author STAT_STREAM_PARAM):
+    m_state(Invalid256, _db, BaseState::PreExisting STAT_STREAM_ARG),
     m_precommit(Invalid256),
     m_author(_author)
 {

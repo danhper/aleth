@@ -189,6 +189,10 @@ public:
 
     /// Used only in tests
     ExtVM const& extVM() const { return *m_ext; }
+#if ETH_MEASURE_GAS
+    /// Output measurements
+    void outputResults(std::ostream& os);
+#endif
 
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
@@ -217,7 +221,10 @@ private:
     u256 m_gasCost;
     SealEngineFace const& m_sealEngine;
 
+#if ETH_MEASURE_GAS
     SystemUsageStat m_usageStat;
+    bool m_usageStatCollected = false;
+#endif
 
     bool m_isCreation = false;
     Address m_newAddress;
