@@ -85,9 +85,7 @@ Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     m_preSeal(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream)),
     m_postSeal(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream)),
     m_working(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream))
-#ifdef ETH_MEASURE_GAS
-    , m_statStream(_statStream)
-#endif
+    ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream))
 {
     init(_host, _dbPath, _snapshotPath, _forceAction, _networkID);
 }

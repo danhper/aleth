@@ -38,9 +38,7 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
     boost::filesystem::path const& _dbPath, boost::filesystem::path const& _snapshotPath,
     eth::ChainParams const& _params, WithExisting _we, NetworkConfig const& _n,
     bytesConstRef _network, bool _testing
-#ifdef ETH_MEASURE_GAS
-    , ostream& _statStream
-#endif
+    ADD_IF_ETH_MEASURE_GAS(ostream& _statStream))
 )
   : m_clientVersion(_clientVersion), m_net(_clientVersion, _n, _network)
 {
@@ -51,10 +49,7 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
         m_ethereum.reset(new eth::Client(_params, (int)_params.networkID, m_net,
             shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we,
             TransactionQueue::Limits{1024, 1024}
-#ifdef ETH_MEASURE_GAS
-            , _statStream
-#endif
-        ));
+            ADD_IF_ETH_MEASURE_GAS(_statStream)));
 
     m_ethereum->startWorking();
     const auto* buildinfo = aleth_get_buildinfo();
