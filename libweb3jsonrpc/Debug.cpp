@@ -53,7 +53,7 @@ State Debug::stateAt(std::string const& _blockHashOrNumber, int _txIndex) const
     Block block = m_eth.block(blockHash(_blockHashOrNumber));
     auto const txCount = block.pending().size();
 
-    State state(State::Null);
+    State state(State::Null ADD_IF_ETH_MEASURE_GAS(m_eth.blockChain().statStream()));
     if (static_cast<size_t>(_txIndex) < txCount)
         createIntermediateState(state, block, _txIndex, m_eth.blockChain());
     else if (static_cast<size_t>(_txIndex) == txCount)
@@ -106,7 +106,7 @@ Json::Value Debug::debug_traceTransaction(string const& _txHash, Json::Value con
     {
         LocalisedTransaction t = m_eth.localisedTransaction(h256(_txHash));
         Block block = m_eth.block(t.blockHash());
-        State s(State::Null);
+        State s(State::Null ADD_IF_ETH_MEASURE_GAS(m_eth.blockChain().statStream()));
         eth::ExecutionResult er;
         Executive e(s, block, t.transactionIndex(), m_eth.blockChain());
         e.setResultRecipient(er);

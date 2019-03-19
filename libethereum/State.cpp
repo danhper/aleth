@@ -40,17 +40,12 @@ using namespace dev::eth;
 namespace fs = boost::filesystem;
 
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs
-#ifdef ETH_MEASURE_GAS
-            , std::ostream& _statStream
-#endif
-):
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db
+             ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream), BaseState _bs):
     m_db(_db),
     m_state(&m_db),
     m_accountStartNonce(_accountStartNonce)
-#ifdef ETH_MEASURE_GAS
-    , m_statStream(_statStream)
-#endif
+    ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream))
 {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
@@ -66,9 +61,7 @@ State::State(State const& _s):
     m_touched(_s.m_touched),
     m_unrevertablyTouched(_s.m_unrevertablyTouched),
     m_accountStartNonce(_s.m_accountStartNonce)
-#ifdef ETH_MEASURE_GAS
-    , m_statStream(_s.statStream())
-#endif
+    ADD_IF_ETH_MEASURE_GAS(m_statStream(_s.statStream()))
 {
 }
 
@@ -651,7 +644,10 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction(e, _t, onOp);
 #ifdef ETH_MEASURE_GAS
-    e.outputResults(statStream());
+    {
+        boost::mutex::scoped_lock scoped_lock(m_statStreamLock);
+        e.outputResults(statStream());
+    }
 #endif
 
     bool removeEmptyAccounts = false;

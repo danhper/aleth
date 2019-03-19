@@ -74,24 +74,20 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ActivityReport const& _r)
 Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, fs::path const& _dbPath,
     fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l
-#if ETH_MEASURE_GAS
-    , std::ostream& _statStream
-#endif
-)
-  : Worker("eth", 0),
+    ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream)
+) : Worker("eth", 0),
     m_bc(_params, _dbPath, _forceAction,
         [](unsigned d, unsigned t) {
             std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r";
-        }
-#if ETH_MEASURE_GAS
-        , _statStream
-#endif
-        ),
+        } ADD_IF_ETH_MEASURE_GAS(_statStream)),
     m_tq(_l),
     m_gp(_gpForAdoption ? _gpForAdoption : make_shared<TrivialGasPricer>()),
-    m_preSeal(chainParams().accountStartNonce),
-    m_postSeal(chainParams().accountStartNonce),
-    m_working(chainParams().accountStartNonce)
+    m_preSeal(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream)),
+    m_postSeal(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream)),
+    m_working(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream))
+#ifdef ETH_MEASURE_GAS
+    , m_statStream(_statStream)
+#endif
 {
     init(_host, _dbPath, _snapshotPath, _forceAction, _networkID);
 }
@@ -292,9 +288,9 @@ void Client::reopenChain(ChainParams const& _p, WithExisting _we)
         WriteGuard l2(x_preSeal);
         WriteGuard l3(x_working);
 
-        m_preSeal = Block(chainParams().accountStartNonce);
-        m_postSeal = Block(chainParams().accountStartNonce);
-        m_working = Block(chainParams().accountStartNonce);
+        m_preSeal = Block(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_statStream));
+        m_postSeal = Block(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_statStream));
+        m_working = Block(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_statStream));
 
         m_stateDB = OverlayDB();
         bc().reopen(_p, _we);
@@ -303,7 +299,7 @@ void Client::reopenChain(ChainParams const& _p, WithExisting _we)
         m_preSeal = bc().genesisBlock(m_stateDB);
         m_preSeal.setAuthor(_p.author);
         m_postSeal = m_preSeal;
-        m_working = Block(chainParams().accountStartNonce);
+        m_working = Block(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_statStream));
     }
 
     if (auto h = m_host.lock())
@@ -507,7 +503,7 @@ void Client::resyncStateFromChain()
 void Client::restartMining()
 {
     bool preChanged = false;
-    Block newPreMine(chainParams().accountStartNonce);
+    Block newPreMine(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_statStream));
     DEV_READ_GUARDED(x_preSeal)
         newPreMine = m_preSeal;
 
@@ -547,7 +543,7 @@ void Client::restartMining()
 
 void Client::resetState()
 {
-    Block newPreMine(chainParams().accountStartNonce);
+    Block newPreMine(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_statStream));
     DEV_READ_GUARDED(x_preSeal)
         newPreMine = m_preSeal;
 
