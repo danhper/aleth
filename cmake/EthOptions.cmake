@@ -14,6 +14,7 @@ macro(configure_project)
     option(MINIUPNPC "Build with UPnP support" OFF)
     option(FASTCTEST "Enable fast ctest" OFF)
     option(ROCKSDB "Build with rocksdb as optional database implementation" OFF)
+    option(MEASURE_GAS "Allows to measure gas" OFF)
 
     if(MINIUPNPC)
         message(WARNING
@@ -40,6 +41,14 @@ macro(configure_project)
 
     if (PARANOID)
         add_definitions(-DETH_PARANOIA)
+    endif ()
+
+    if (VMTRACE)
+        add_definitions(-DETH_VMTRACE)
+    endif ()
+
+    if (MEASURE_GAS)
+        add_definitions(-DETH_MEASURE_GAS)
     endif ()
 
     # CI Builds should provide (for user builds this is totally optional)
@@ -73,6 +82,8 @@ macro(print_config)
     message("-- EVM_OPTIMIZE     Enable VM optimizations                  ${EVM_OPTIMIZE}")
     message("-- FATDB            Full database exploring                  ${FATDB}")
     message("-- ROCKSDB          RocksDB as optional DB implementation    ${ROCKSDB}")
+    message("-- MEASURE_GAS      Gas measurement                          ${MEASURE_GAS}")
+    message("-- DB               Database implementation                  LEVELDB")
     message("-- PARANOID         -                                        ${PARANOID}")
     message("-- MINIUPNPC        -                                        ${MINIUPNPC}")
     message("------------------------------------------------------------- components")
