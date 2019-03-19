@@ -108,10 +108,7 @@ public:
     /// in the constructor there.
     BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust,
                ProgressCallback const& _pc = ProgressCallback()
-#ifdef ETH_MEASURE_GAS
-               , std::ostream& _statStream = std::cout
-#endif
-);
+               ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream = std::cout));
 
     ~BlockChain();
 

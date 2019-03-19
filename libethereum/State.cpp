@@ -31,9 +31,6 @@
 #include <libevm/VMFactory.h>
 #include <boost/filesystem.hpp>
 
-#ifdef ETH_MEASURE_GAS
-#endif
-
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
