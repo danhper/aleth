@@ -505,9 +505,16 @@ bool Executive::go(OnOpFunc const& _onOp)
                 m_s.setCode(m_ext->myAddress, out.toVector(), m_ext->version);
             }
             else {
+#if ETH_MEASURE_GAS
                 SystemUsageStatCollector collector;
+#endif
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
-                m_usageStat = collector.get_system_stat();
+#if ETH_MEASURE_GAS
+                m_usageStat = collector.getSystemStat();
+                std::cout << "Memory allocated: " << m_usageStat.memoryAllocated << std::endl
+                          << "output size: " << m_output.toBytes().size() << std::endl
+                          << "extra memory allocated: " << m_usageStat.extraMemoryAllocated << std::endl;
+#endif
             }
         }
         catch (RevertInstruction& _e)

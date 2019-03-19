@@ -1,35 +1,44 @@
 #include "SystemUsageStatCollector.h"
 
 #include <cstdio>
+#include <memory>
+#include <map>
 
-static uint64_t get_memory_usage() {
-    FILE* stat_file = fopen("/proc/self/stat", "r");
-    if (stat_file == NULL) {
-        return 0;
-    }
-    uint64_t used_memory;
-    // NOTE: vsize is field number 23 and is the virtual memory size in bytes
-    // see 'man 5 proc'
-    fscanf(stat_file,
-        "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u"
-        "%*u %*u %*u %*u %*u %*d %*d %*d %*d %*d"
-        "%*d %*d %lu",
-        &used_memory);
-    fclose(stat_file);
-    return used_memory;
+
+static thread_local size_t memoryAllocated = 0;
+static thread_local size_t memoryDeallocated = 0;
+
+#ifdef ETH_MEASURE_GAS
+static thread_local std::map<intptr_t, size_t, std::less<intptr_t>, CAllocator<std::pair<const intptr_t, size_t>>> memoryMapping;
+void* operator new(std::size_t sz) {
+    // NOTE: if this overflows we probably have bigger problems
+    memoryAllocated += sz;
+    auto ptr = std::malloc(sz);
+    memoryMapping[reinterpret_cast<intptr_t>(ptr)] = sz;
+    return ptr;
 }
 
-static float get_ellapsed_secs(timeval start, timeval end) {
+void operator delete(void* ptr) noexcept {
+    auto key = reinterpret_cast<intptr_t>(ptr);
+    if (memoryMapping.find(key) != memoryMapping.end()) {
+        memoryDeallocated += memoryMapping[key];
+        memoryMapping.erase(key);
+    }
+    std::free(ptr);
+}
+#endif
+
+static float getEllapsedSecs(timeval start, timeval end) {
     time_t ellapsed_us = end.tv_usec - start.tv_usec;
     return (float)ellapsed_us / 1000000;
 }
 
-static float get_clock_ellapsed_secs(clock_t start, clock_t stop) {
+static float getClockEllapsedSecs(clock_t start, clock_t stop) {
     clock_t ellapsed_clock = stop - start;
     return ellapsed_clock / (float)CLOCKS_PER_SEC;
 }
 
-static rusage get_current_usage() {
+static rusage getCurrentUsage() {
     rusage usage;
     getrusage(RUSAGE_SELF, &usage);
     return usage;
@@ -40,17 +49,21 @@ SystemUsageStatCollector::SystemUsageStatCollector() {
 }
 
 void SystemUsageStatCollector::reset() {
-    start_memory = get_memory_usage();
-    start_clock = clock();
-    start_usage = get_current_usage();
+    startMemoryAllocated = memoryAllocated;
+    startMemoryDeallocated = memoryDeallocated;
+    startClock = clock();
+    startUsage = getCurrentUsage();
 }
 
-SystemUsageStat SystemUsageStatCollector::get_system_stat() const {
-    rusage end_usage = get_current_usage();
+SystemUsageStat SystemUsageStatCollector::getSystemStat() const {
+    rusage end_usage = getCurrentUsage();
+    auto totalMemoryAllocated = memoryAllocated - startMemoryAllocated;
+    auto totalMemoryDeallocated = memoryDeallocated - startMemoryDeallocated;
     return {
-        .clock_time = get_clock_ellapsed_secs(start_clock, clock()),
-        .user_time = get_ellapsed_secs(start_usage.ru_utime, end_usage.ru_utime),
-        .system_time = get_ellapsed_secs(start_usage.ru_stime, end_usage.ru_stime),
-        .memory_usage = get_memory_usage() - start_memory,
+        .clockTime = getClockEllapsedSecs(startClock, clock()),
+        .userTime = getEllapsedSecs(startUsage.ru_utime, end_usage.ru_utime),
+        .systemTime = getEllapsedSecs(startUsage.ru_stime, end_usage.ru_stime),
+        .memoryAllocated = totalMemoryAllocated,
+        .extraMemoryAllocated = static_cast<int64_t>(totalMemoryAllocated - totalMemoryDeallocated)
     };
 }
