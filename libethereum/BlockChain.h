@@ -106,7 +106,13 @@ class BlockChain
 public:
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
+    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust,
+               ProgressCallback const& _pc = ProgressCallback()
+#ifdef ETH_MEASURE_GAS
+               , std::ostream& _statStream = std::cout
+#endif
+);
+
     ~BlockChain();
 
     /// Reopen everything.
@@ -314,6 +320,10 @@ public:
     /// Change the chain start block.
     void setChainStartBlockNumber(unsigned _number);
 
+#ifdef ETH_MEASURE_GAS
+    std::ostream& statStream() const { return m_statStream; };
+#endif
+
 private:
     static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
 
@@ -420,6 +430,10 @@ private:
     mutable Logger m_logger{createLogger(VerbosityDebug, "chain")};
     mutable Logger m_loggerDetail{createLogger(VerbosityTrace, "chain")};
     mutable Logger m_loggerError{createLogger(VerbosityError, "chain")};
+
+#ifdef ETH_MEASURE_GAS
+    std::ostream& m_statStream = std::cout;
+#endif
 
     friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
 };

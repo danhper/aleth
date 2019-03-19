@@ -179,7 +179,11 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs = BaseState::PreExisting);
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs = BaseState::PreExisting
+#ifdef ETH_MEASURE_GAS
+                   , std::ostream& _statStream = std::cout
+#endif
+    );
 
     enum NullType { Null };
     State(NullType): State(Invalid256, OverlayDB(), BaseState::Empty) {}
@@ -330,6 +334,10 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
+#ifdef ETH_MEASURE_GAS
+    std::ostream& statStream() const { return m_statStream; };
+#endif
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
@@ -369,6 +377,10 @@ private:
 
     friend std::ostream& operator<<(std::ostream& _out, State const& _s);
     ChangeLog m_changeLog;
+
+#ifdef ETH_MEASURE_GAS
+    std::ostream& m_statStream;
+#endif
 };
 
 std::ostream& operator<<(std::ostream& _out, State const& _s);

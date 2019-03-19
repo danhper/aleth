@@ -70,14 +70,23 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ActivityReport const& _r)
     return _out;
 }
 
+
 Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, fs::path const& _dbPath,
-    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l)
+    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l
+#if ETH_MEASURE_GAS
+    , std::ostream& _statStream
+#endif
+)
   : Worker("eth", 0),
     m_bc(_params, _dbPath, _forceAction,
         [](unsigned d, unsigned t) {
             std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r";
-        }),
+        }
+#if ETH_MEASURE_GAS
+        , _statStream
+#endif
+        ),
     m_tq(_l),
     m_gp(_gpForAdoption ? _gpForAdoption : make_shared<TrivialGasPricer>()),
     m_preSeal(chainParams().accountStartNonce),

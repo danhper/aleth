@@ -187,6 +187,11 @@ public:
     /// Revert all changes made to the state by this execution.
     void revert();
 
+#if ETH_MEASURE_GAS
+    /// Output measurements
+    void outputResults(std::ostream& os);
+#endif
+
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
     bool executeCreate(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice, u256 const& _gas, bytesConstRef _code, Address const& _originAddress);
@@ -209,7 +214,10 @@ private:
     u256 m_gasCost;
     SealEngineFace const& m_sealEngine;
 
+#if ETH_MEASURE_GAS
     SystemUsageStat m_usageStat;
+    bool m_usageStatCollected = false;
+#endif
 
     bool m_isCreation = false;
     Address m_newAddress;
