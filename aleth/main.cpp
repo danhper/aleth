@@ -769,7 +769,7 @@ int main(int argc, char** argv)
         chainParams.allowFutureBlocks = true;
 
 #ifdef ETH_MEASURE_GAS
-    std::ofstream file(measureGasPath.string(), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+    std::ofstream file(measureGasPath.string(), std::ios_base::out | std::ios_base::binary | std::ios_base::app);
     boost::iostreams::filtering_streambuf<boost::iostreams::output> out;
     out.push(boost::iostreams::gzip_compressor());
     out.push(file);

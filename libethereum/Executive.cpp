@@ -550,11 +550,14 @@ static std::string u256ToString(u256 value)
 
 void Executive::outputResults(std::ostream& os)
 {
-    if (!m_usageStatCollected)
+    if (!m_usageStatCollected || !m_t)
     {
         return;
     }
     Json::Value root;
+    root["env"] = Json::Value();
+    root["env"]["block"] = m_envInfo.number();
+
     root["usage"] = Json::Value();
     root["usage"]["clock_time"] = m_usageStat.clockTime;
     root["usage"]["user_time"] = m_usageStat.userTime;
@@ -564,6 +567,7 @@ void Executive::outputResults(std::ostream& os)
     if (m_res)
     {
         root["transaction"] = Json::Value();
+        root["transaction"]["gas"] = u256ToString(m_t.gas());
         root["transaction"]["gas_for_deposit"] = u256ToString(m_res->gasForDeposit);
         root["transaction"]["gas_refunded"] = u256ToString(m_res->gasRefunded);
         root["transaction"]["gas_used"] = u256ToString(m_res->gasUsed);
