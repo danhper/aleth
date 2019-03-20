@@ -9,24 +9,28 @@ static thread_local size_t memoryAllocated = 0;
 static thread_local size_t memoryDeallocated = 0;
 
 #ifdef ETH_MEASURE_GAS
-static thread_local std::map<intptr_t, size_t, std::less<intptr_t>, CAllocator<std::pair<const intptr_t, size_t>>> memoryMapping;
+#define MAX_SIZE 1000003
+static thread_local intptr_t memoryMapping[MAX_SIZE];
+
 void* operator new(std::size_t sz) {
     // NOTE: if this overflows we probably have bigger problems
     memoryAllocated += sz;
     auto ptr = std::malloc(sz);
-    memoryMapping[reinterpret_cast<intptr_t>(ptr)] = sz;
+    intptr_t key = reinterpret_cast<intptr_t>(ptr) % MAX_SIZE;
+    memoryMapping[key] = sz;
     return ptr;
 }
 
 void operator delete(void* ptr) noexcept {
-    auto key = reinterpret_cast<intptr_t>(ptr);
-    if (memoryMapping.find(key) != memoryMapping.end()) {
-        memoryDeallocated += memoryMapping[key];
-        memoryMapping.erase(key);
-    }
+    intptr_t key = reinterpret_cast<intptr_t>(ptr) % MAX_SIZE;
+    memoryDeallocated += memoryMapping[key];
+    memoryMapping[key] = 0;
     std::free(ptr);
 }
 #endif
+
+namespace dev
+{
 
 static float getEllapsedSecs(timeval start, timeval end) {
     time_t ellapsed_us = end.tv_usec - start.tv_usec;
@@ -66,4 +70,6 @@ SystemUsageStat SystemUsageStatCollector::getSystemStat() const {
         .memoryAllocated = totalMemoryAllocated,
         .extraMemoryAllocated = static_cast<int64_t>(totalMemoryAllocated - totalMemoryDeallocated)
     };
+}
+
 }
