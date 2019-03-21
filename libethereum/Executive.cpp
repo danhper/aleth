@@ -447,9 +447,9 @@ bool Executive::go(OnOpFunc const& _onOp)
         try
         {
             // Create VM instance. Force Interpreter if tracing requested.
-            auto vm = VMFactory::create();
             if (m_isCreation)
             {
+                auto vm = VMFactory::create();
                 auto out = vm->exec(m_gas, *m_ext, _onOp);
                 if (m_res)
                 {
@@ -484,7 +484,10 @@ bool Executive::go(OnOpFunc const& _onOp)
 #if ETH_MEASURE_GAS
                 SystemUsageStatCollector collector;
 #endif
-                m_output = vm->exec(m_gas, *m_ext, _onOp);
+                {
+                    auto vm = VMFactory::create();
+                    m_output = vm->exec(m_gas, *m_ext, _onOp);
+                }
 #if ETH_MEASURE_GAS
                 m_usageStat = collector.getSystemStat();
                 m_usageStatCollected = true;
