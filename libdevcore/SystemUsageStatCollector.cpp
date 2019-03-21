@@ -60,9 +60,9 @@ void SystemUsageStatCollector::reset() {
 }
 
 SystemUsageStat SystemUsageStatCollector::getSystemStat() const {
-    rusage end_usage = getCurrentUsage();
     auto totalMemoryAllocated = memoryAllocated - startMemoryAllocated;
     auto totalMemoryDeallocated = memoryDeallocated - startMemoryDeallocated;
+    rusage end_usage = getCurrentUsage();
     return {
         .clockTime = getClockEllapsedSecs(startClock, clock()),
         .userTime = getEllapsedSecs(startUsage.ru_utime, end_usage.ru_utime),
