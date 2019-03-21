@@ -13,9 +13,11 @@
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
 
+#ifdef ETH_MEASURE_GAS
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+#endif
 
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/FileSystem.h>
@@ -109,6 +111,13 @@ void stopSealingAfterXBlocks(eth::Client* _c, unsigned _start, unsigned& io_mini
 }
 }
 
+#ifdef ETH_MEASURE_GAS
+struct nop {
+    template <typename T>
+    void operator() (T const &) const noexcept { }
+};
+#endif
+
 int main(int argc, char** argv)
 {
     setDefaultOrCLocale();
@@ -181,7 +190,7 @@ int main(int argc, char** argv)
     bytes b = contents(configFile);
 
 #ifdef ETH_MEASURE_GAS
-    fs::path measureGasPath("gas.jsonl.gz");
+    std::string measureGasPath("gas.jsonl.gz");
 #endif
 
     strings passwordsToNote;
@@ -769,18 +778,30 @@ int main(int argc, char** argv)
         chainParams.allowFutureBlocks = true;
 
 #ifdef ETH_MEASURE_GAS
-    std::ofstream file(measureGasPath.string(), std::ios_base::out | std::ios_base::binary | std::ios_base::app);
-    boost::iostreams::filtering_streambuf<boost::iostreams::output> out;
-    out.push(boost::iostreams::gzip_compressor());
-    out.push(file);
-    std::ostream statStream(&out);
-    #define STATSTREAM , statStream
-#else
-    #define STATSTREAM
-#endif
+    std::shared_ptr<std::ostream> streamPtr;
+    std::shared_ptr<std::ofstream> filePtr;
+    std::shared_ptr<boost::iostreams::filtering_ostreambuf> ostreamBuf;
+    if (measureGasPath == "-") {
+        streamPtr = std::shared_ptr<std::ostream>(&std::cout, nop());
+    } else {
+        filePtr = std::make_shared<std::ofstream>(measureGasPath, std::ios_base::out | std::ios_base::binary | std::ios_base::app);
+        if (measureGasPath.size() >= 3 && measureGasPath.substr(measureGasPath.size() - 3, 3) == ".gz") {
+            ostreamBuf = std::make_shared<boost::iostreams::filtering_ostreambuf>();
+            ostreamBuf->push(boost::iostreams::gzip_compressor());
+            ostreamBuf->push(*filePtr);
+            streamPtr = std::make_shared<std::ostream>(ostreamBuf.get());
+        } else {
+            streamPtr = filePtr;
+        }
+    }
+    std::ostream& statStream = *streamPtr;
 
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
-        snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode STATSTREAM);
+        snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode, statStream);
+#else
+    dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
+        snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode);
+#endif
 
     if (!extraData.empty())
         web3.ethereum()->setExtraData(extraData);
