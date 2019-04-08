@@ -437,6 +437,38 @@ OnOpFunc Executive::simpleTrace()
     };
 }
 
+
+#if ETH_MEASURE_GAS
+OnOpFunc Executive::storeTrace()
+{
+    auto& storeStats = m_storeStats;
+
+    return [&storeStats](uint64_t /* steps */, uint64_t /* PC */,
+                           Instruction inst, bigint /* newMemSize */,
+                           bigint /* gasCost */, bigint /* gas */,
+                           VMFace const* _vm, ExtVMFace const* voidExt) {
+        ExtVM const& ext = *dynamic_cast<ExtVM const*>(voidExt);
+        auto vm = dynamic_cast<LegacyVM const*>(_vm);
+        if (inst == Instruction::SSTORE)
+        {
+            auto stack = vm->stack();
+            auto key = stack[stack.size() - 1];
+            auto newValue = stack[stack.size() - 2];
+            auto currentValue = ext.store(key);
+            auto originalValue = ext.originalStorageValue(key);
+            storeStats.recordWrite(key, originalValue, currentValue, newValue);
+        }
+        else if (inst == Instruction::SLOAD)
+        {
+            auto stack = vm->stack();
+            auto key = stack[stack.size() - 1];
+            storeStats.recordRead(key);
+        }
+    };
+}
+#endif
+
+
 bool Executive::go(OnOpFunc const& _onOp)
 {
     if (m_ext)
@@ -544,7 +576,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 }
 
 #ifdef ETH_MEASURE_GAS
-static std::string u256ToString(u256 value)
+static std::string u256ToString(const u256& value)
 {
     stringstream ss;
     ss << value;
@@ -568,6 +600,9 @@ void Executive::outputResults(std::ostream& os)
     root["usage"]["system_time"] = m_usageStat.systemTime;
     root["usage"]["memory_allocated"] = m_usageStat.memoryAllocated;
     root["usage"]["extra_memory_allocated"] = m_usageStat.extraMemoryAllocated;
+
+    root["storage"] = m_storeStats.toJson();
+
     if (m_res)
     {
         root["transaction"] = Json::Value();

@@ -213,7 +213,7 @@ public:
     virtual ~ExtVMFace() = default;
 
     /// Read storage location.
-    virtual u256 store(u256) { return 0; }
+    virtual u256 store(u256) const { return 0; }
 
     /// Write a value in storage.
     virtual void setStore(u256, u256) {}

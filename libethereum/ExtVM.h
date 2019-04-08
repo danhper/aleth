@@ -55,7 +55,7 @@ public:
     }
 
     /// Read storage location.
-    u256 store(u256 _n) final { return m_s.storage(myAddress, _n); }
+    u256 store(u256 _n) const final { return m_s.storage(myAddress, _n); }
 
     /// Write a value in storage.
     void setStore(u256 _n, u256 _v) final;
