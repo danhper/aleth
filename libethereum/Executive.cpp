@@ -464,6 +464,12 @@ OnOpFunc Executive::storeTrace()
             auto key = stack[stack.size() - 1];
             storeStats.recordRead(key);
         }
+        else if (inst == Instruction::CREATE || inst == Instruction::CREATE2)
+        {
+            auto stack = vm->stack();
+            auto size = stack[stack.size() - 3];
+            storeStats.recordCreate(size);
+        }
     };
 }
 #endif
