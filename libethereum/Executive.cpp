@@ -612,6 +612,7 @@ void Executive::outputResults(std::ostream& os)
     if (m_res)
     {
         root["transaction"] = Json::Value();
+        root["transaction"]["hash"] = m_t.sha3().hex();
         root["transaction"]["sender"] = m_t.sender().hex();
         root["transaction"]["receiver"] = m_t.receiveAddress().hex();
         root["transaction"]["to"] = m_t.to().hex();
