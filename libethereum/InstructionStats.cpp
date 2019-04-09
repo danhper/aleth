@@ -1,4 +1,4 @@
-#include "StoreStats.h"
+#include "InstructionStats.h"
 
 
 
@@ -9,7 +9,7 @@ namespace eth {
 StoreKeyStats::StoreKeyStats() = default;
 
 
-void StoreStats::recordWrite(const u256 &key, u256 originalValue, const u256 &currentValue, const u256 &newValue) {
+void InstructionStats::recordWrite(const u256 &key, u256 originalValue, const u256 &currentValue, const u256 &newValue) {
     auto res = m_changes.insert(std::make_pair(key, StoreKeyStats()));
     auto& stats = res.first->second;
     if (!stats.initialValueSet) {
@@ -23,18 +23,22 @@ void StoreStats::recordWrite(const u256 &key, u256 originalValue, const u256 &cu
     }
 }
 
-void StoreStats::recordRead(const u256 &key) {
+void InstructionStats::recordRead(const u256 &key) {
     auto res = m_changes.insert(std::make_pair(key, StoreKeyStats()));
     auto& stats = res.first->second;
     stats.readsCount++;
 }
 
-void StoreStats::recordCreate(const u256 &size) {
+void InstructionStats::recordCreate(const u256 &size) {
     m_createCalls.push_back(size);
 }
 
+void InstructionStats::recordSuicide() {
+    m_suicideCallsCount++;
+}
 
-Json::Value StoreStats::toJson() const {
+
+Json::Value InstructionStats::toJson() const {
     uint64_t changesCount = 0;
     uint64_t writesCount = 0;
     uint64_t readsCount = 0;
@@ -57,12 +61,13 @@ Json::Value StoreStats::toJson() const {
     }
 
     Json::Value result;
-    result["changesCount"] = changesCount;
-    result["writesCount"] = writesCount;
-    result["readsCount"] = readsCount;
-    result["storageAllocated"] = storageAllocated;
-    result["creationCount"] = m_createCalls.size();
-    result["creationSize"] = creationSize;
+    result["storage.changesCount"] = changesCount;
+    result["storage.writesCount"] = writesCount;
+    result["storage.readsCount"] = readsCount;
+    result["storage.allocated"] = storageAllocated;
+    result["contracts.creationCount"] = m_createCalls.size();
+    result["contracts.creationSize"] = creationSize;
+    result["suicideCount"] = m_suicideCallsCount;
 
     return result;
 }

@@ -29,6 +29,7 @@
 
 #include <sstream>
 #include <numeric>
+#include <set>
 
 using namespace std;
 using namespace dev;
@@ -465,36 +466,62 @@ OnOpFunc Executive::simpleTrace()
 
 
 #if ETH_MEASURE_GAS
-OnOpFunc Executive::storeTrace()
+OnOpFunc Executive::traceInstructions()
 {
-    auto& storeStats = m_storeStats;
+    static std::set<Instruction> supportedInstructions = {
+        Instruction::SSTORE,
+        Instruction::SLOAD,
+        Instruction::SUICIDE,
+        Instruction::CREATE,
+        Instruction::CREATE2,
+    };
+    auto& instructionStats = m_instructionStats;
 
-    return [&storeStats](uint64_t /* steps */, uint64_t /* PC */,
+    return [&instructionStats](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* _vm, ExtVMFace const* voidExt) {
+
+        if (supportedInstructions.find(inst) == supportedInstructions.end())
+        {
+            return;
+        }
+
         ExtVM const& ext = *dynamic_cast<ExtVM const*>(voidExt);
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
-        if (inst == Instruction::SSTORE)
+        auto stack = vm->stack();
+
+        switch (inst)
         {
-            auto stack = vm->stack();
-            auto key = stack[stack.size() - 1];
-            auto newValue = stack[stack.size() - 2];
-            auto currentValue = ext.store(key);
-            auto originalValue = ext.originalStorageValue(key);
-            storeStats.recordWrite(key, originalValue, currentValue, newValue);
-        }
-        else if (inst == Instruction::SLOAD)
-        {
-            auto stack = vm->stack();
-            auto key = stack[stack.size() - 1];
-            storeStats.recordRead(key);
-        }
-        else if (inst == Instruction::CREATE || inst == Instruction::CREATE2)
-        {
-            auto stack = vm->stack();
-            auto size = stack[stack.size() - 3];
-            storeStats.recordCreate(size);
+            case Instruction::SSTORE:
+            {
+                auto key = stack[stack.size() - 1];
+                auto newValue = stack[stack.size() - 2];
+                auto currentValue = ext.store(key);
+                auto originalValue = ext.originalStorageValue(key);
+                instructionStats.recordWrite(key, originalValue, currentValue, newValue);
+                break;
+            }
+            case Instruction::SLOAD:
+            {
+                auto key = stack[stack.size() - 1];
+                instructionStats.recordRead(key);
+                break;
+            }
+            case Instruction::CREATE:
+            case Instruction::CREATE2:
+            {
+                auto size = stack[stack.size() - 3];
+                instructionStats.recordCreate(size);
+                break;
+            }
+            case Instruction::SUICIDE:
+            {
+                instructionStats.recordSuicide();
+                break;
+            }
+            default:
+                break;
         }
     };
 }
@@ -633,7 +660,7 @@ void Executive::outputResults(std::ostream& os)
     root["usage"]["memory_allocated"] = m_usageStat.memoryAllocated;
     root["usage"]["extra_memory_allocated"] = m_usageStat.extraMemoryAllocated;
 
-    root["storage"] = m_storeStats.toJson();
+    root["storage"] = m_instructionStats.toJson();
 
     if (m_res)
     {
