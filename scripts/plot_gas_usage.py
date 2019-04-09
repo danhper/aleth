@@ -8,6 +8,7 @@ from pandas.io.json import json_normalize
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.decomposition import PCA
 
 
 
@@ -17,6 +18,17 @@ COLUMNS_TO_CAST = [
     "transaction.gas_refunded",
     "transaction.gas_used",
 ]
+
+
+def normalize(X):
+    return (X - X.mean()) / X.std()
+
+
+def combine(X, Y):
+    X = normalize(X)
+    Y = normalize(Y)
+    XY = np.stack([X, Y], axis=1)
+    return PCA(n_components=1).fit_transform(XY)
 
 
 def load_data(filepath, start=1_000_000, stop=1_500_000):
@@ -41,16 +53,19 @@ def plot_memory_graph(df, args):
     df["memory_intensive"] = df["usage.extra_memory_allocated"] > args.memory_threshold
     with_memory_allocated = df[df["usage.extra_memory_allocated"] >= 0]
     g = sns.lmplot(x="transaction.gas_used", y="usage.extra_memory_allocated",
-                   data=with_memory_allocated, hue="memory_intensive")
+                   data=with_memory_allocated, hue="memory_intensive",
+                   scatter_kws=dict(rasterized=True))
     g.ax.ticklabel_format(axis="both", style="sci", scilimits=(0, 5))
-    plt.savefig("memory-gas-{0}-{1}.png".format(args.start, args.stop))
+    plt.savefig("plots/memory-gas-{0}-{1}.pdf".format(args.start, args.stop))
 
 
 def plot_cpu_graph(df, args):
     without_dos = df[df["usage.clock_time"] < 1]
-    ax = sns.regplot(x="transaction.gas_used", y="usage.clock_time", data=without_dos)
+    ax = sns.regplot(x="transaction.gas_used", y="usage.clock_time",
+                     data=without_dos,
+                     scatter_kws=dict(rasterized=True))
     ax.ticklabel_format(axis="both", style="sci", scilimits=(0, 5))
-    plt.savefig("cpu-gas-{0}-{1}.png".format(args.start, args.stop))
+    plt.savefig("plots/cpu-gas-{0}-{1}.pdf".format(args.start, args.stop))
 
 
 def main():
@@ -84,7 +99,13 @@ def main():
         plot_cpu_graph(df, args)
 
 
+
 #%%
 
 if __name__ == "__main__":
     main()
+
+
+#%%
+
+MEASUREMENTS_PATH = "build/gas-measurements.jsonl.gz"
