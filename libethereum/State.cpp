@@ -613,7 +613,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 
 #if ETH_MEASURE_GAS
     if (!onOp)
-        onOp = e.storeTrace();
+        onOp = e.traceInstructions();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction(e, _t, onOp);

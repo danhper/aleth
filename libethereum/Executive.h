@@ -15,7 +15,7 @@
 #pragma once
 
 #include "Transaction.h"
-#include "StoreStats.h"
+#include "InstructionStats.h"
 
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
@@ -193,7 +193,7 @@ public:
     void outputResults(std::ostream& os);
 
     /// Operation function to trace changes to the store during gas execution
-    OnOpFunc storeTrace();
+    OnOpFunc traceInstructions();
 #endif
 
 private:
@@ -221,7 +221,7 @@ private:
 #if ETH_MEASURE_GAS
     SystemUsageStat m_usageStat;
     bool m_usageStatCollected = false;
-    StoreStats m_storeStats;
+    InstructionStats m_instructionStats;
 #endif
 
     bool m_isCreation = false;
