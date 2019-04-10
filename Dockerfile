@@ -3,7 +3,7 @@ ARG cflags=""
 ARG cmake_flags=""
 
 RUN apt-get update
-RUN apt-get install -y git libleveldb-dev clang valgrind cmake build-essential lcov
+RUN apt-get install -y git libleveldb-dev clang valgrind cmake build-essential lcov python3
 
 COPY . /aleth
 WORKDIR /aleth
