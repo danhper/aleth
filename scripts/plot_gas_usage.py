@@ -55,15 +55,20 @@ def plot_memory_graph(df, args):
     g = sns.lmplot(x="transaction.gas_used", y="usage.extra_memory_allocated",
                    data=with_memory_allocated, hue="memory_intensive",
                    scatter_kws=dict(rasterized=True))
+    g.ax.set_xlabel("Gas used")
+    g.ax.set_ylabel("Memory allocated (B)")
     g.ax.ticklabel_format(axis="both", style="sci", scilimits=(0, 5))
     plt.savefig("plots/memory-gas-{0}-{1}.pdf".format(args.start, args.stop))
 
 
 def plot_cpu_graph(df, args):
-    without_dos = df[df["usage.clock_time"] < 1]
+    if not args.include_dos:
+        df = df[df["usage.clock_time"] < 1]
     ax = sns.regplot(x="transaction.gas_used", y="usage.clock_time",
-                     data=without_dos,
+                     data=df,
                      scatter_kws=dict(rasterized=True))
+    ax.set_xlabel("Gas used")
+    ax.set_ylabel("Clock time (s)")
     ax.ticklabel_format(axis="both", style="sci", scilimits=(0, 5))
     plt.savefig("plots/cpu-gas-{0}-{1}.pdf".format(args.start, args.stop))
 
@@ -85,6 +90,8 @@ def main():
     cpu_parser.add_argument("input", help="input file")
     cpu_parser.add_argument("--start", help="start index", type=int, default=1_000_000)
     cpu_parser.add_argument("--stop", help="stop index", type=int, default=1_500_000)
+    cpu_parser.add_argument("--include-dos", help="include dos data points",
+                            default=False, action="store_true")
 
     args = parser.parse_args()
 
