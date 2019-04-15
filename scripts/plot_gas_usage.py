@@ -3,7 +3,9 @@ import argparse
 import json
 import gzip
 import logging
+from os import path
 
+import pandas as pd
 from pandas.io.json import json_normalize
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -18,6 +20,14 @@ COLUMNS_TO_CAST = [
     "transaction.gas_refunded",
     "transaction.gas_used",
 ]
+
+
+def get_basename(filepath):
+    basename = path.basename(filepath)
+    while True:
+        basename, ext = path.splitext(basename)
+        if not ext:
+            return basename
 
 
 def normalize(X):
@@ -52,25 +62,33 @@ def plot_memory_graph(df, args):
         df = df[df["usage.extra_memory_allocated"] < args.max_memory]
     df["memory_intensive"] = df["usage.extra_memory_allocated"] > args.memory_threshold
     with_memory_allocated = df[df["usage.extra_memory_allocated"] >= 0]
+    hue = "type" if "type" in df.columns else "memory_intensive"
     g = sns.lmplot(x="transaction.gas_used", y="usage.extra_memory_allocated",
-                   data=with_memory_allocated, hue="memory_intensive",
+                   data=with_memory_allocated, hue=hue,
                    scatter_kws=dict(rasterized=True))
     g.ax.set_xlabel("Gas used")
     g.ax.set_ylabel("Memory allocated (B)")
     g.ax.ticklabel_format(axis="both", style="sci", scilimits=(0, 5))
-    plt.savefig("plots/memory-gas-{0}-{1}.pdf".format(args.start, args.stop))
+    output_path = args.output or "plots/memory-gas-{0}-{1}.pdf"
+    plt.savefig(output_path.format(args.start, args.stop))
 
 
 def plot_cpu_graph(df, args):
     if not args.include_dos:
         df = df[df["usage.clock_time"] < 1]
-    ax = sns.regplot(x="transaction.gas_used", y="usage.clock_time",
-                     data=df,
-                     scatter_kws=dict(rasterized=True))
+    hue = "type" if "type" in df.columns else None
+    g = sns.lmplot(x="transaction.gas_used", y="usage.clock_time",
+                   data=df, hue=hue,
+                   scatter_kws=dict(rasterized=True))
+    ax = g.ax
+    # ax = sns.regplot(x="transaction.gas_used", y="usage.clock_time",
+    #                  data=df,
+    #                  scatter_kws=dict(rasterized=True))
     ax.set_xlabel("Gas used")
     ax.set_ylabel("Clock time (s)")
     ax.ticklabel_format(axis="both", style="sci", scilimits=(0, 5))
-    plt.savefig("plots/cpu-gas-{0}-{1}.pdf".format(args.start, args.stop))
+    output_path = args.output or "plots/cpu-gas-{0}-{1}.pdf"
+    plt.savefig(output_path.format(args.start, args.stop))
 
 
 def main():
@@ -80,14 +98,16 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     memory_parser = subparsers.add_parser("memory")
-    memory_parser.add_argument("input", help="input file")
+    memory_parser.add_argument("input", nargs="+", help="input file")
+    memory_parser.add_argument("--output", help="output file")
     memory_parser.add_argument("--start", help="start index", type=int, default=1_000_000)
     memory_parser.add_argument("--stop", help="stop index", type=int, default=1_500_000)
     memory_parser.add_argument("--max-memory", help="max memory", type=int)
     memory_parser.add_argument("--memory-threshold", help="threshold for high memory", type=int, default=300_000)
 
     cpu_parser = subparsers.add_parser("cpu")
-    cpu_parser.add_argument("input", help="input file")
+    cpu_parser.add_argument("input", nargs="+", help="input file")
+    cpu_parser.add_argument("--output", help="output file")
     cpu_parser.add_argument("--start", help="start index", type=int, default=1_000_000)
     cpu_parser.add_argument("--stop", help="stop index", type=int, default=1_500_000)
     cpu_parser.add_argument("--include-dos", help="include dos data points",
@@ -98,7 +118,16 @@ def main():
     if not args.command:
         parser.error("no command provided")
 
-    df = load_data(args.input, start=args.start, stop=args.stop)
+    if len(args.input) == 1:
+        df = load_data(args.input[0], start=args.start, stop=args.stop)
+    else:
+        dfs = []
+        for filepath in args.input:
+            df = load_data(filepath, start=args.start, stop=args.stop)
+            df["type"] = get_basename(filepath)
+            dfs.append(df)
+        df = pd.concat(dfs, ignore_index=True)
+
 
     if args.command == "memory":
         plot_memory_graph(df, args)
