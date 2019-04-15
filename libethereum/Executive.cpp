@@ -495,6 +495,9 @@ OnOpFunc Executive::traceInstructions()
         {
             case Instruction::SSTORE:
             {
+                if (stack.size() <= 1) {
+                    break;
+                }
                 auto key = stack[stack.size() - 1];
                 auto newValue = stack[stack.size() - 2];
                 auto currentValue = ext.store(key);
@@ -504,6 +507,9 @@ OnOpFunc Executive::traceInstructions()
             }
             case Instruction::SLOAD:
             {
+                if (stack.size() == 0) {
+                    break;
+                }
                 auto key = stack[stack.size() - 1];
                 instructionStats.recordRead(key);
                 break;
@@ -511,6 +517,9 @@ OnOpFunc Executive::traceInstructions()
             case Instruction::CREATE:
             case Instruction::CREATE2:
             {
+                if (stack.size() <= 2) {
+                    break;
+                }
                 auto size = stack[stack.size() - 3];
                 instructionStats.recordCreate(size);
                 break;
