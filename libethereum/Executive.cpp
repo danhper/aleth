@@ -508,6 +508,38 @@ OnOpFunc Executive::traceInstructions()
         }
     };
 }
+
+
+OnOpFunc Executive::benchmarkInstructions()
+{
+    static std::set<Instruction> supportedInstructions = {
+        Instruction::ADD,
+    };
+
+    auto& benchmarkResults = m_benchmarkResults;
+
+    return [&benchmarkResults](uint64_t /* steps */, uint64_t /* PC */,
+                           Instruction inst, bigint /* newMemSize */,
+                           bigint /* gasCost */, bigint /* gas */,
+                           VMFace const* _vm, ExtVMFace const* /* voidExt */) {
+        // XXX: can unfortunately not make benchmarkInstruction const
+        auto vm = dynamic_cast<LegacyVM*>(const_cast<VMFace*>(_vm));
+        if (vm->benchmarkIterationsLeft() >= 0)
+        {
+            return;
+        }
+
+        if (supportedInstructions.find(inst) == supportedInstructions.end())
+        {
+            return;
+        }
+
+        auto result = vm->benchmarkInstruction();
+        auto& storedResult = benchmarkResults[inst];
+        storedResult.mean += result.mean;
+        storedResult.variance += result.variance;
+    };
+}
 #endif
 
 

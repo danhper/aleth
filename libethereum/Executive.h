@@ -20,10 +20,12 @@
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
 #include <libdevcore/SystemUsageStatCollector.h>
+#include <libdevcore/BenchmarkResults.h>
 #include <libevm/VMFace.h>
 
 #include <json/json.h>
 #include <functional>
+#include <map>
 
 namespace Json
 {
@@ -194,6 +196,9 @@ public:
 
     /// Operation function to trace changes to the store during gas execution
     OnOpFunc traceInstructions();
+
+    /// Operation function to benchmark instructions
+    OnOpFunc benchmarkInstructions();
 #endif
 
 private:
@@ -222,6 +227,7 @@ private:
     SystemUsageStat m_usageStat;
     bool m_usageStatCollected = false;
     InstructionStats m_instructionStats;
+    std::map<Instruction, BenchmarkResults> m_benchmarkResults;
 #endif
 
     bool m_isCreation = false;

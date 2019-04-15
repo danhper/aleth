@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <libdevcore/BenchmarkResults.h>
+
 #include "Instruction.h"
 #include "LegacyVMConfig.h"
 #include "VMFace.h"
@@ -43,6 +45,11 @@ public:
         reverse(stack.begin(), stack.end());
         return stack;
     };
+
+#ifdef ETH_MEASURE_GAS
+    BenchmarkResults benchmarkInstruction();
+    inline int64_t benchmarkIterationsLeft() const { return m_benchmarkIterationsLeft; };
+#endif
 
 private:
 
@@ -141,6 +148,10 @@ private:
     void updateMem(uint64_t _newMem);
     void logGasMem();
     void fetchInstruction();
+
+#ifdef ETH_MEASURE_GAS
+    int64_t m_benchmarkIterationsLeft = -1;
+#endif
     
     uint64_t decodeJumpDest(const byte* const _code, uint64_t& _pc);
     uint64_t decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff);
