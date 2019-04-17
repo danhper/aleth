@@ -13,6 +13,7 @@ set(unittest_sources
     unittests/libdevcore/LruCache.cpp
     unittests/libdevcore/RangeMask.cpp
     unittests/libdevcore/RLP.cpp
+    unittests/libdevcore/BenchmarkResults.cpp
 
     unittests/libdevcrypto/AES.cpp
 

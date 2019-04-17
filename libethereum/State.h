@@ -173,22 +173,34 @@ public:
     using AddressMap = std::map<h256, Address>;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    explicit State(u256 const& _accountStartNonce ADD_IF_ETH_MEASURE_GAS(std::ostream& _stateStream))
-            : State(_accountStartNonce, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_stateStream), BaseState::Empty) {
-    }
+    explicit State(u256 const& _accountStartNonce)
+            : State(_accountStartNonce, OverlayDB(), BaseState::Empty) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db
-                   ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream),
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db,
                    BaseState _bs = BaseState::PreExisting
     );
 
     enum NullType { Null };
-    State(NullType ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream))
-        : State(Invalid256, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_statStream), BaseState::Empty) {}
+    State(NullType) : State(Invalid256, OverlayDB(), BaseState::Empty) {}
+
+#ifdef ETH_MEASURE_GAS
+    explicit State(u256 const& _accountStartNonce, std::ostream& _stateStream)
+            : State(_accountStartNonce, OverlayDB(), _stateStream, BaseState::Empty) {
+    }
+    explicit State(u256 const& _accountStartNonce,
+                   OverlayDB const& _db,
+                   std::ostream& _statStream,
+                   BaseState _bs = BaseState::PreExisting
+    );
+
+    State(NullType, std::ostream& _statStream)
+        : State(Invalid256, OverlayDB(), _statStream, BaseState::Empty) {}
+#endif
+
 
     /// Copy state object.
     State(State const& _s);
@@ -390,8 +402,10 @@ private:
     ChangeLog m_changeLog;
 
 #ifdef ETH_MEASURE_GAS
-    std::ostream& m_statStream;
+    std::ostream& m_statStream = std::cout;
     boost::mutex m_statStreamLock;
+
+    bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp);
 #endif
 };
 

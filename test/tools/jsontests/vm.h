@@ -52,7 +52,7 @@ public:
     FakeExtVM() = delete;
     FakeExtVM(eth::EnvInfo const& _envInfo, unsigned _depth = 0);
 
-    virtual u256 store(u256 _n) override { return std::get<2>(addresses[myAddress])[_n]; }
+    virtual u256 store(u256 _n) { return std::get<2>(addresses[myAddress])[_n]; }
     virtual void setStore(u256 _n, u256 _v) override { std::get<2>(addresses[myAddress])[_n] = _v; }
     virtual bool exists(Address _a) override { return !!addresses.count(_a); }
     virtual u256 balance(Address _a) override { return std::get<0>(addresses[_a]); }

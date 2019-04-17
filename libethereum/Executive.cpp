@@ -31,6 +31,7 @@
 #include <numeric>
 #include <set>
 
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -536,40 +537,64 @@ OnOpFunc Executive::traceInstructions()
 }
 
 
-OnOpFunc Executive::benchmarkInstructions()
+std::pair<OnOpFunc, OnOpFunc> Executive::benchmarkInstructions(
+    std::map<Instruction, BenchmarkResults>& benchmarkResults
+)
 {
     static std::set<Instruction> supportedInstructions = {
         Instruction::ADD,
     };
 
-    auto& benchmarkResults = m_benchmarkResults;
+    auto start = clock();
+    auto benchmarking = false;
 
-    return [&benchmarkResults](uint64_t /* steps */, uint64_t /* PC */,
+    auto onOp = [&benchmarking, &start](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
-                           VMFace const* _vm, ExtVMFace const* /* voidExt */) {
-        // XXX: can unfortunately not make benchmarkInstruction const
-        auto vm = dynamic_cast<LegacyVM*>(const_cast<VMFace*>(_vm));
-        if (vm->benchmarkIterationsLeft() >= 0)
-        {
-            return;
-        }
-
+                           VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
+        benchmarking = false;
         if (supportedInstructions.find(inst) == supportedInstructions.end())
         {
             return;
         }
-
-        auto result = vm->benchmarkInstruction();
-        auto& storedResult = benchmarkResults[inst];
-        storedResult.mean += result.mean;
-        storedResult.variance += result.variance;
+        benchmarking = true;
+        start = clock();
     };
+
+    auto afterOp = [&benchmarking, &start, &benchmarkResults](uint64_t /* steps */, uint64_t /* PC */,
+                           Instruction inst, bigint /* newMemSize */,
+                           bigint /* gasCost */, bigint /* gas */,
+                           VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
+        if (!benchmarking)
+        {
+            return;
+        }
+        auto ellapsed = clock() - start;
+        auto result = benchmarkResults.find(inst);
+        if (result == benchmarkResults.end())
+        {
+            auto pair = std::pair<Instruction, BenchmarkResults>(inst, BenchmarkResults(BENCHMARK_GRANULARITY));
+            auto inserted = benchmarkResults.insert(pair);
+            result = inserted.first;
+        }
+        result->second.addMeasurement(ellapsed);
+    };
+
+    return std::pair<OnOpFunc, OnOpFunc>(onOp, afterOp);
 }
 #endif
 
 
+#ifdef ETH_MEASURE_GAS
 bool Executive::go(OnOpFunc const& _onOp)
+{
+    return go(_onOp, OnOpFunc());
+}
+
+bool Executive::go(OnOpFunc const& _onOp, OnOpFunc const &_afterOp)
+#else
+bool Executive::go(OnOpFunc const& _onOp)
+#endif
 {
     if (m_ext)
     {
@@ -615,15 +640,17 @@ bool Executive::go(OnOpFunc const& _onOp)
             {
 #if ETH_MEASURE_GAS
                 SystemUsageStatCollector collector;
-#endif
                 {
                     auto vm = VMFactory::create();
-                    m_output = vm->exec(m_gas, *m_ext, _onOp);
+                    m_output = vm->exec(m_gas, *m_ext, _onOp, _afterOp);
                 }
-#if ETH_MEASURE_GAS
                 m_usageStat = collector.getSystemStat();
                 m_usageStatCollected = true;
+#else
+                auto vm = VMFactory::create();
+                m_output = vm->exec(m_gas, *m_ext, _onOp);
 #endif
+
             }
         }
         catch (RevertInstruction& _e)

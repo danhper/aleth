@@ -18,6 +18,7 @@
 #pragma once
 
 #include <libdevcore/BenchmarkResults.h>
+#include <map>
 
 #include "Instruction.h"
 #include "LegacyVMConfig.h"
@@ -32,6 +33,9 @@ class LegacyVM: public VMFace
 {
 public:
     virtual owning_bytes_ref exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
+#ifdef ETH_MEASURE_GAS
+    virtual owning_bytes_ref exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, OnOpFunc const& _afterOp) override final;
+#endif
 
 #if EIP_615
     // invalid code will throw an exeption
@@ -45,11 +49,6 @@ public:
         reverse(stack.begin(), stack.end());
         return stack;
     };
-
-#ifdef ETH_MEASURE_GAS
-    BenchmarkResults benchmarkInstruction();
-    inline int64_t benchmarkIterationsLeft() const { return m_benchmarkIterationsLeft; };
-#endif
 
 private:
 
@@ -150,7 +149,8 @@ private:
     void fetchInstruction();
 
 #ifdef ETH_MEASURE_GAS
-    int64_t m_benchmarkIterationsLeft = -1;
+    OnOpFunc m_afterOp;
+    void afterOperation();
 #endif
     
     uint64_t decodeJumpDest(const byte* const _code, uint64_t& _pc);

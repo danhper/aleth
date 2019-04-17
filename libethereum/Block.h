@@ -77,10 +77,10 @@ public:
     // TODO: pass in ChainOperationParams rather than u256
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    Block(u256 const& _accountStartNonce ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream))
-        : m_state(_accountStartNonce, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_statStream), BaseState::Empty),
-          m_precommit(_accountStartNonce ADD_IF_ETH_MEASURE_GAS(_statStream))
-          ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream)) {}
+    Block(u256 const& _accountStartNonce)
+        : m_state(_accountStartNonce, OverlayDB(), BaseState::Empty),
+          m_precommit(_accountStartNonce)
+          ADD_IF_ETH_MEASURE_GAS(m_statStream(std::cout)) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a Block object
@@ -101,11 +101,21 @@ public:
           );
 
     enum NullType { Null };
-    Block(NullType
-        ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream)
-    ): m_state(0, OverlayDB() ADD_IF_ETH_MEASURE_GAS(_statStream), BaseState::Empty),
-       m_precommit(0 ADD_IF_ETH_MEASURE_GAS(_statStream))
-       ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream)) {}
+    Block(NullType): m_state(0, OverlayDB(), BaseState::Empty),
+       m_precommit(0)
+       ADD_IF_ETH_MEASURE_GAS(m_statStream(std::cout)) {}
+
+#ifdef ETH_MEASURE_GAS
+    Block(u256 const& _accountStartNonce, std::ostream& _statStream)
+        : m_state(_accountStartNonce, OverlayDB(), _statStream, BaseState::Empty),
+          m_precommit(_accountStartNonce, _statStream),
+          m_statStream(_statStream) {}
+
+    Block(NullType, std::ostream& _statStream)
+        : m_state(0, OverlayDB(), _statStream, BaseState::Empty),
+          m_precommit(0, _statStream),
+          m_statStream(_statStream) {}
+#endif
 
     /// Construct from a given blockchain. Empty, but associated with @a _bc 's chain params.
     explicit Block(BlockChain const& _bc);
