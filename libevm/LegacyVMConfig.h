@@ -426,14 +426,34 @@ namespace dev
     goto* jumpTable[(int)m_OP];
 #define CASE(name) \
     name:
+
+#ifdef ETH_MEASURE_GAS
+#define NEXT            \
+    afterOperation();   \
+    ++m_PC;             \
+    fetchInstruction(); \
+    goto* jumpTable[(int)m_OP];
+
+#define BREAK          \
+    afterOperation();  \
+    return;
+
+#define CONTINUE        \
+    afterOperation();   \
+    fetchInstruction(); \
+    goto* jumpTable[(int)m_OP];
+#else
 #define NEXT            \
     ++m_PC;             \
     fetchInstruction(); \
     goto* jumpTable[(int)m_OP];
+
+#define BREAK return;
+
 #define CONTINUE        \
     fetchInstruction(); \
     goto* jumpTable[(int)m_OP];
-#define BREAK return;
+#endif
 #define DEFAULT
 #define WHILE_CASES
 

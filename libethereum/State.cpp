@@ -37,17 +37,30 @@ using namespace dev::eth;
 namespace fs = boost::filesystem;
 
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db
-             ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream), BaseState _bs):
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs):
     m_db(_db),
     m_state(&m_db),
     m_accountStartNonce(_accountStartNonce)
-    ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream))
 {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
         m_state.init();
 }
+
+#ifdef ETH_MEASURE_GAS
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db,
+             std::ostream& _statStream, BaseState _bs):
+    m_db(_db),
+    m_state(&m_db),
+    m_accountStartNonce(_accountStartNonce),
+    m_statStream(_statStream)
+{
+    if (_bs != BaseState::PreExisting)
+        // Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
+        m_state.init();
+}
+#endif
+
 
 State::State(State const& _s):
     m_db(_s.m_db),
@@ -611,17 +624,27 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     if (isVmTraceEnabled() && !onOp)
         onOp = e.simpleTrace();
 
-#if ETH_MEASURE_GAS
-    if (!onOp)
-        onOp = e.traceInstructions();
-#endif
     u256 const startGasUsed = _envInfo.gasUsed();
-    bool const statusCode = executeTransaction(e, _t, onOp);
-#ifdef ETH_MEASURE_GAS
+
+#if ETH_MEASURE_GAS
+    std::map<Instruction, BenchmarkResults> benchmarkResults;
+    auto afterOp = OnOpFunc();
+    auto traceOp = e.traceInstructions();
+    auto benchmarkOps = e.benchmarkInstructions(benchmarkResults);
+    // auto ops = std::vector<OnOpFunc>({traceOp, benchmarkOps.first});
+    if (!onOp)
+    {
+        // onOp = compoundOnOpFunc(ops);
+        onOp = benchmarkOps.first;
+        afterOp = benchmarkOps.second;
+    }
+    bool const statusCode = executeTransaction(e, _t, onOp, afterOp);
     {
         boost::mutex::scoped_lock scoped_lock(m_statStreamLock);
         e.outputResults(statStream());
     }
+#else
+    bool const statusCode = executeTransaction(e, _t, onOp);
 #endif
 
     bool removeEmptyAccounts = false;
@@ -660,7 +683,16 @@ void State::executeBlockTransactions(Block const& _block, unsigned _txCount, Las
 
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
+#ifdef ETH_MEASURE_GAS
 bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp)
+{
+    return executeTransaction(_e, _t, _onOp, OnOpFunc());
+}
+
+bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp)
+#else
+bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp)
+#endif
 {
     size_t const savept = savepoint();
     try
@@ -668,7 +700,11 @@ bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc co
         _e.initialize(_t);
 
         if (!_e.execute())
+#ifdef ETH_MEASURE_GAS
+            _e.go(_onOp, _afterOp);
+#else
             _e.go(_onOp);
+#endif
         return _e.finalize();
     }
     catch (Exception const&)

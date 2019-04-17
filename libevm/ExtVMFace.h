@@ -112,6 +112,8 @@ class VMFace;
 using OnOpFunc = std::function<void(uint64_t /*steps*/, uint64_t /* PC */, Instruction /*instr*/,
     bigint /*newMemSize*/, bigint /*gasCost*/, bigint /*gas*/, VMFace const*, ExtVMFace const*)>;
 
+OnOpFunc compoundOnOpFunc(const std::vector<OnOpFunc>& ops);
+
 struct CallParameters
 {
     CallParameters() = default;

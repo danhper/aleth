@@ -27,6 +27,10 @@
 #include <functional>
 #include <map>
 
+#ifndef BENCHMARK_GRANULARITY
+#define BENCHMARK_GRANULARITY 1000
+#endif
+
 namespace Json
 {
     class Value;
@@ -197,8 +201,13 @@ public:
     /// Operation function to trace changes to the store during gas execution
     OnOpFunc traceInstructions();
 
-    /// Operation function to benchmark instructions
-    OnOpFunc benchmarkInstructions();
+    /// Operations function to benchmark instructions
+    std::pair<OnOpFunc, OnOpFunc> benchmarkInstructions(
+        std::map<Instruction, BenchmarkResults>& benchmarkResults
+    );
+
+    // Go function accepting an after operation
+    bool go(OnOpFunc const& _onOp, OnOpFunc const& _afterOp);
 #endif
 
 private:
@@ -227,7 +236,6 @@ private:
     SystemUsageStat m_usageStat;
     bool m_usageStatCollected = false;
     InstructionStats m_instructionStats;
-    std::map<Instruction, BenchmarkResults> m_benchmarkResults;
 #endif
 
     bool m_isCreation = false;

@@ -79,6 +79,20 @@ void LegacyVM::onOperation()
             m_runGas, m_io_gas, this, m_ext);
 }
 
+#ifdef ETH_MEASURE_GAS
+//
+// for tracing, checking, metering, measuring ...
+//
+void LegacyVM::afterOperation()
+{
+    if (m_afterOp)
+        (m_afterOp)(m_nSteps, m_PC, m_OP,
+            m_newMemSize > m_mem.size() ? (m_newMemSize - m_mem.size()) / 32 : uint64_t(0),
+            m_runGas, m_io_gas, this, m_ext);
+}
+#endif
+
+
 //
 // set current SP to SP', adjust SP' per _removed and _added items
 //
@@ -199,17 +213,6 @@ void LegacyVM::logGasMem()
 
 void LegacyVM::fetchInstruction()
 {
-#ifdef ETH_MEASURE_GAS
-    if (m_benchmarkIterationsLeft > 0) {
-        m_benchmarkIterationsLeft--;
-        m_io_gas += m_runGas;
-        return;
-    } else if (m_benchmarkIterationsLeft == 0) {
-        m_benchmarkIterationsLeft--;
-        m_OP = Instruction::STOP;
-        return;
-    }
-#endif
     m_OP = Instruction(m_code[m_PC]);
     const InstructionMetric& metric = c_metrics[static_cast<size_t>(m_OP)];
     adjustStack(metric.args, metric.ret);
@@ -220,71 +223,18 @@ void LegacyVM::fetchInstruction()
     m_copyMemSize = 0;
 }
 
-#ifdef ETH_MEASURE_GAS
-BenchmarkResults LegacyVM::benchmarkInstruction()
-{
-    // save state
-    auto saved_PC = m_PC;
-    auto saved_OP = m_OP;
-    auto saved_SP = m_SP;
-    auto saved_SPP = m_SPP;
-    auto saved_runGas = m_runGas;
-    auto saved_newMemSize = m_newMemSize;
-    auto saved_copyMemSize = m_copyMemSize;
-
-    // run benchmark
-
-    // warmup
-    m_benchmarkIterationsLeft = 1000;
-    interpretCases();
-
-    size_t iterationsCount = 100;
-    std::vector<double> results;
-
-    for (size_t i = 0; i < iterationsCount; i++)
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-
-        m_benchmarkIterationsLeft = 1000;
-        interpretCases();
-
-        auto stop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration<double>(stop - start).count();
-        results.push_back(duration);
-    }
-
-    auto mean = 0.0;
-    auto variance = 0.0;
-
-    for (auto result : results)
-    {
-        mean += result;
-    }
-    mean /= iterationsCount;
-    for (auto result : results)
-    {
-        auto element = result - mean;
-        variance += element * element;
-    }
-    variance /= iterationsCount;
-
-    // restore state
-    m_PC = saved_PC;
-    m_OP = saved_OP;
-    m_SP = saved_SP;
-    m_SPP = saved_SPP;
-    m_runGas = saved_runGas;
-    m_newMemSize = saved_newMemSize;
-    m_copyMemSize = saved_copyMemSize;
-
-    return BenchmarkResults(mean, variance);
-}
-#endif
-
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 // interpreter entry point
+
+#ifdef ETH_MEASURE_GAS
+owning_bytes_ref LegacyVM::exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, OnOpFunc const& _afterOp)
+{
+    m_afterOp = _afterOp;
+    return exec(_io_gas, _ext, _onOp);
+}
+#endif
 
 owning_bytes_ref LegacyVM::exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
