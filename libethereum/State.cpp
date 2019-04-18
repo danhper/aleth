@@ -49,11 +49,11 @@ State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs
 
 #ifdef ETH_MEASURE_GAS
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db,
-             std::ostream& _statStream, BaseState _bs):
+             std::shared_ptr<AnalysisEnv> _analysisEnv, BaseState _bs):
     m_db(_db),
     m_state(&m_db),
     m_accountStartNonce(_accountStartNonce),
-    m_statStream(_statStream)
+    m_analysisEnv(_analysisEnv)
 {
     if (_bs != BaseState::PreExisting)
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
@@ -70,7 +70,7 @@ State::State(State const& _s):
     m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
     m_touched(_s.m_touched),
     m_accountStartNonce(_s.m_accountStartNonce)
-    ADD_IF_ETH_MEASURE_GAS(m_statStream(_s.statStream()))
+    ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_s.analysisEnv()))
 {
 }
 
@@ -627,7 +627,6 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     u256 const startGasUsed = _envInfo.gasUsed();
 
 #if ETH_MEASURE_GAS
-    static InstructionsBenchmark benchmarkResults(BENCHMARK_GRANULARITY);
     auto afterOp = OnOpFunc();
     auto traceOp = e.traceInstructions();
     auto benchmarkOp = e.benchmarkInstructionsOp();
@@ -635,13 +634,12 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     if (!onOp)
     {
         onOp = compoundOnOpFunc(ops);
-        // onOp = e.benchmarkInstructionsOp();
-        afterOp = e.benchmarkInstructionsAfterOp(benchmarkResults);
+        afterOp = e.benchmarkInstructionsAfterOp(analysisEnv()->instructionsBenchmark());
     }
     bool const statusCode = executeTransaction(e, _t, onOp, afterOp);
     {
         boost::mutex::scoped_lock scoped_lock(m_statStreamLock);
-        e.outputResults(statStream());
+        e.outputResults(analysisEnv()->statStream());
     }
 #else
     bool const statusCode = executeTransaction(e, _t, onOp);

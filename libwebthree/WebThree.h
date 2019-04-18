@@ -35,6 +35,10 @@
 #include <libethereum/Client.h>
 #include <libethereum/ChainParams.h>
 
+#ifdef ETH_MEASURE_GAS
+#include <libevmanalysis/AnalysisEnv.h>
+#endif
+
 namespace dev
 {
 
@@ -114,7 +118,7 @@ public:
         boost::filesystem::path const& _snapshotPath, eth::ChainParams const& _params,
         WithExisting _we = WithExisting::Trust, p2p::NetworkConfig const& _n = p2p::NetworkConfig{},
         bytesConstRef _network = bytesConstRef(), bool _testing = false
-        ADD_IF_ETH_MEASURE_GAS(std::ostream& statStream = std::cout));
+        ADD_IF_ETH_MEASURE_GAS(std::shared_ptr<eth::AnalysisEnv> _analysisEnv = nullptr));
 
     /// Destructor.
     ~WebThreeDirect() override;

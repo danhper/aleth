@@ -75,7 +75,7 @@ void ClientTest::setChainParams(string const& _genesis)
 
 void ClientTest::modifyTimestamp(int64_t _timestamp)
 {
-    Block block(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_statStream));
+    Block block(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(m_analysisEnv));
     DEV_READ_GUARDED(x_preSeal)
         block = m_preSeal;
 

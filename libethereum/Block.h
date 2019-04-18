@@ -80,7 +80,7 @@ public:
     Block(u256 const& _accountStartNonce)
         : m_state(_accountStartNonce, OverlayDB(), BaseState::Empty),
           m_precommit(_accountStartNonce)
-          ADD_IF_ETH_MEASURE_GAS(m_statStream(std::cout)) {}
+          ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(nullptr)) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a Block object
@@ -103,18 +103,18 @@ public:
     enum NullType { Null };
     Block(NullType): m_state(0, OverlayDB(), BaseState::Empty),
        m_precommit(0)
-       ADD_IF_ETH_MEASURE_GAS(m_statStream(std::cout)) {}
+       ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(nullptr)) {}
 
 #ifdef ETH_MEASURE_GAS
-    Block(u256 const& _accountStartNonce, std::ostream& _statStream)
-        : m_state(_accountStartNonce, OverlayDB(), _statStream, BaseState::Empty),
-          m_precommit(_accountStartNonce, _statStream),
-          m_statStream(_statStream) {}
+    Block(u256 const& _accountStartNonce, std::shared_ptr<AnalysisEnv> _analysisEnv)
+        : m_state(_accountStartNonce, OverlayDB(), _analysisEnv, BaseState::Empty),
+          m_precommit(_accountStartNonce, _analysisEnv),
+          m_analysisEnv(_analysisEnv) {}
 
-    Block(NullType, std::ostream& _statStream)
-        : m_state(0, OverlayDB(), _statStream, BaseState::Empty),
-          m_precommit(0, _statStream),
-          m_statStream(_statStream) {}
+    Block(NullType, std::shared_ptr<AnalysisEnv> _analysisEnv)
+        : m_state(0, OverlayDB(), _analysisEnv, BaseState::Empty),
+          m_precommit(0, _analysisEnv),
+          m_analysisEnv(_analysisEnv) {}
 #endif
 
     /// Construct from a given blockchain. Empty, but associated with @a _bc 's chain params.
@@ -337,7 +337,7 @@ private:
     Logger m_loggerDetailed{createLogger(VerbosityTrace, "block")};
 
 #ifdef ETH_MEASURE_GAS
-    std::ostream& m_statStream;
+    std::shared_ptr<AnalysisEnv> m_analysisEnv;
 #endif
 };
 
