@@ -32,6 +32,11 @@
 #include <array>
 #include <unordered_map>
 
+
+#ifdef ETH_MEASURE_GAS
+#include <libevmanalysis/AnalysisEnv.h>
+#endif
+
 namespace dev
 {
 
@@ -188,17 +193,17 @@ public:
     State(NullType) : State(Invalid256, OverlayDB(), BaseState::Empty) {}
 
 #ifdef ETH_MEASURE_GAS
-    explicit State(u256 const& _accountStartNonce, std::ostream& _stateStream)
-            : State(_accountStartNonce, OverlayDB(), _stateStream, BaseState::Empty) {
+    explicit State(u256 const& _accountStartNonce, std::shared_ptr<AnalysisEnv> _analysisEnv)
+            : State(_accountStartNonce, OverlayDB(), _analysisEnv, BaseState::Empty) {
     }
     explicit State(u256 const& _accountStartNonce,
                    OverlayDB const& _db,
-                   std::ostream& _statStream,
+                   std::shared_ptr<AnalysisEnv> _analysisEnv,
                    BaseState _bs = BaseState::PreExisting
     );
 
-    State(NullType, std::ostream& _statStream)
-        : State(Invalid256, OverlayDB(), _statStream, BaseState::Empty) {}
+    State(NullType, std::shared_ptr<AnalysisEnv> _analysisEnv)
+        : State(Invalid256, OverlayDB(), _analysisEnv, BaseState::Empty) {}
 #endif
 
 
@@ -356,7 +361,7 @@ public:
     ChangeLog const& changeLog() const { return m_changeLog; }
 
 #ifdef ETH_MEASURE_GAS
-    std::ostream& statStream() const { return m_statStream; };
+    std::shared_ptr<AnalysisEnv> analysisEnv() const { return m_analysisEnv; };
 #endif
 
 private:
@@ -402,7 +407,7 @@ private:
     ChangeLog m_changeLog;
 
 #ifdef ETH_MEASURE_GAS
-    std::ostream& m_statStream = std::cout;
+    std::shared_ptr<AnalysisEnv> m_analysisEnv = nullptr;
     boost::mutex m_statStreamLock;
 
     bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp);

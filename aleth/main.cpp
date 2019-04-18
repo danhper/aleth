@@ -14,9 +14,8 @@
 #include <boost/program_options/options_description.hpp>
 
 #ifdef ETH_MEASURE_GAS
-#include <boost/iostreams/filtering_streambuf.hpp>
-#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
+#include <libevmanalysis/AnalysisEnv.h>
+#include <libevmanalysis/StreamWrapper.h>
 #endif
 
 #include <libdevcore/DBFactory.h>
@@ -111,13 +110,6 @@ void stopSealingAfterXBlocks(eth::Client* _c, unsigned _start, unsigned& io_mini
 }
 }
 
-#ifdef ETH_MEASURE_GAS
-struct nop {
-    template <typename T>
-    void operator() (T const &) const noexcept { }
-};
-#endif
-
 int main(int argc, char** argv)
 {
     setDefaultOrCLocale();
@@ -191,7 +183,9 @@ int main(int argc, char** argv)
     bytes b = contents(configFile);
 
 #ifdef ETH_MEASURE_GAS
-    std::string measureGasPath("gas.jsonl.gz");
+    std::string measureGasPath("gas-measurements.jsonl.gz");
+    std::string benchmarkPath("benchmark.json");
+    uint64_t benchmarkGranularity = 1000;
 #endif
 
     strings passwordsToNote;
@@ -351,6 +345,18 @@ int main(int argc, char** argv)
         "Enable VM trace log (requires log-verbosity 4).\n");
 
 
+#ifdef ETH_MEASURE_GAS
+    po::options_description analysisOptions("ANALYSIS OPTIONS", c_lineWidth);
+    auto addAnalysisOptions = analysisOptions.add_options();
+    addAnalysisOptions("gas-measurements-file", po::value<string>()->value_name("<path>"),
+        ("file to output gas measurements"));
+    addAnalysisOptions("benchmark-file", po::value<string>()->value_name("<path>"),
+        ("file to output benchmark results"));
+    addAnalysisOptions("benchmark-granularity",
+                       po::value<uint64_t>()->value_name("<benchmark-granularity>"),
+        ("granularity for the benchmark"));
+#endif
+
     po::options_description generalOptions("GENERAL OPTIONS", c_lineWidth);
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption("data-dir,d", po::value<string>()->value_name("<path>"),
@@ -373,6 +379,10 @@ int main(int argc, char** argv)
         .add(dbOptions)
         .add(loggingProgramOptions)
         .add(generalOptions);
+
+#ifdef ETH_MEASURE_GAS
+    allowedOptions.add(analysisOptions);
+#endif
 
     po::variables_map vm;
 
@@ -711,6 +721,14 @@ int main(int argc, char** argv)
     {
         measureGasPath = vm["gas-measurements-file"].as<string>();
     }
+    if (vm.count("benchmark-file"))
+    {
+        benchmarkPath = vm["benchmark-file"].as<string>();
+    }
+    if (vm.count("benchmark-granularity"))
+    {
+        benchmarkGranularity = vm["benchmark-granularity"].as<uint64_t>();
+    }
 #endif
 
     setupLogging(loggingOptions);
@@ -779,26 +797,12 @@ int main(int argc, char** argv)
         chainParams.allowFutureBlocks = true;
 
 #ifdef ETH_MEASURE_GAS
-    std::shared_ptr<std::ostream> streamPtr;
-    std::shared_ptr<std::ofstream> filePtr;
-    std::shared_ptr<boost::iostreams::filtering_ostreambuf> ostreamBuf;
-    if (measureGasPath == "-") {
-        streamPtr = std::shared_ptr<std::ostream>(&std::cout, nop());
-    } else {
-        filePtr = std::make_shared<std::ofstream>(measureGasPath, std::ios_base::out | std::ios_base::binary | std::ios_base::app);
-        if (measureGasPath.size() >= 3 && measureGasPath.substr(measureGasPath.size() - 3, 3) == ".gz") {
-            ostreamBuf = std::make_shared<boost::iostreams::filtering_ostreambuf>();
-            ostreamBuf->push(boost::iostreams::gzip_compressor());
-            ostreamBuf->push(*filePtr);
-            streamPtr = std::make_shared<std::ostream>(ostreamBuf.get());
-        } else {
-            streamPtr = filePtr;
-        }
-    }
-    std::ostream& statStream = *streamPtr;
-
+    auto statStreamWrapper = StreamWrapper(measureGasPath);
+    InstructionsBenchmark instructionsBenchmark(benchmarkGranularity);
+    auto analysisEnv = std::make_shared<AnalysisEnv>(statStreamWrapper.getStream(),
+                                                     instructionsBenchmark);
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
-        snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode, statStream);
+        snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode, analysisEnv);
 #else
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
         snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode);

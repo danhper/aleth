@@ -170,10 +170,10 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 
 BlockChain::BlockChain(ChainParams const& _p, fs::path const& _dbPath, WithExisting _we, ProgressCallback const& _pc
-                       ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream)
+                       ADD_IF_ETH_MEASURE_GAS(std::shared_ptr<AnalysisEnv> _analysisEnv)
 ): m_lastBlockHashes(new LastBlockHashes(*this)),
    m_dbPath(_dbPath)
-   ADD_IF_ETH_MEASURE_GAS(m_statStream(_statStream))
+   ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_analysisEnv))
 {
     init(_p);
     open(_dbPath, _we, _pc);

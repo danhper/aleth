@@ -42,6 +42,10 @@
 #include <unordered_set>
 #include <boost/filesystem/path.hpp>
 
+#ifdef ETH_MEASURE_GAS
+#include <libevmanalysis/AnalysisEnv.h>
+#endif
+
 namespace std
 {
 template <> struct hash<pair<dev::h256, unsigned>>
@@ -108,7 +112,7 @@ public:
     /// in the constructor there.
     BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust,
                ProgressCallback const& _pc = ProgressCallback()
-               ADD_IF_ETH_MEASURE_GAS(std::ostream& _statStream = std::cout));
+               ADD_IF_ETH_MEASURE_GAS(std::shared_ptr<AnalysisEnv> _analysisEnv = nullptr));
 
     ~BlockChain();
 
@@ -320,7 +324,7 @@ public:
     void setChainStartBlockNumber(unsigned _number);
 
 #ifdef ETH_MEASURE_GAS
-    std::ostream& statStream() const { return m_statStream; };
+    std::shared_ptr<AnalysisEnv> analysisEnv() const { return m_analysisEnv; };
 #endif
 
 private:
@@ -431,7 +435,7 @@ private:
     mutable Logger m_loggerError{createLogger(VerbosityError, "chain")};
 
 #ifdef ETH_MEASURE_GAS
-    std::ostream& m_statStream = std::cout;
+    std::shared_ptr<AnalysisEnv> m_analysisEnv;
 #endif
 
     friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);

@@ -6,13 +6,13 @@ set(
 )
 
 add_executable(aleth ${sources})
-set(link_libraries
+set(private_link_libraries
     ethereum ethashseal evm web3jsonrpc webthree devcore Boost::program_options
 )
 if(MEASURE_GAS)
-    list(APPEND link_libraries Boost::iostreams)
+    set(private_link_libraries ${private_link_libraries} Boost::iostreams evmanalysis)
 endif()
-target_link_libraries(aleth PRIVATE ${link_libraries})
+target_link_libraries(aleth PRIVATE ${private_link_libraries})
 
 target_include_directories(aleth PRIVATE ../utils)
 

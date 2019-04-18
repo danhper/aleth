@@ -58,10 +58,10 @@ public:
 Block::Block(BlockChain const& _bc, OverlayDB const& _db,
              BaseState _bs, Address const& _author
     ):
-    m_state(Invalid256, _db ADD_IF_ETH_MEASURE_GAS(_bc.statStream()), _bs),
-    m_precommit(Invalid256 ADD_IF_ETH_MEASURE_GAS(_bc.statStream())),
+    m_state(Invalid256, _db ADD_IF_ETH_MEASURE_GAS(_bc.analysisEnv()), _bs),
+    m_precommit(Invalid256 ADD_IF_ETH_MEASURE_GAS(_bc.analysisEnv())),
     m_author(_author)
-    ADD_IF_ETH_MEASURE_GAS(m_statStream(_bc.statStream()))
+    ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_bc.analysisEnv()))
 {
     noteChain(_bc);
     m_previousBlock.clear();
@@ -71,10 +71,10 @@ Block::Block(BlockChain const& _bc, OverlayDB const& _db,
 
 Block::Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root,
              Address const& _author):
-    m_state(Invalid256, _db ADD_IF_ETH_MEASURE_GAS(_bc.statStream()), BaseState::PreExisting),
-    m_precommit(Invalid256 ADD_IF_ETH_MEASURE_GAS(_bc.statStream())),
+    m_state(Invalid256, _db ADD_IF_ETH_MEASURE_GAS(_bc.analysisEnv()), BaseState::PreExisting),
+    m_precommit(Invalid256 ADD_IF_ETH_MEASURE_GAS(_bc.analysisEnv())),
     m_author(_author)
-    ADD_IF_ETH_MEASURE_GAS(m_statStream(_bc.statStream()))
+    ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_bc.analysisEnv()))
 {
     noteChain(_bc);
     m_state.setRoot(_root);
@@ -83,7 +83,7 @@ Block::Block(BlockChain const& _bc, OverlayDB const& _db, h256 const& _root,
 //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block(BlockChain const& _bc): Block(Null ADD_IF_ETH_MEASURE_GAS(_bc.statStream())) { noteChain(_bc); }
+Block::Block(BlockChain const& _bc): Block(Null ADD_IF_ETH_MEASURE_GAS(_bc.analysisEnv())) { noteChain(_bc); }
 
 Block::Block(Block const& _s):
     m_state(_s.m_state),
@@ -96,7 +96,7 @@ Block::Block(Block const& _s):
     m_currentBytes(_s.m_currentBytes),
     m_author(_s.m_author),
     m_sealEngine(_s.m_sealEngine)
-    ADD_IF_ETH_MEASURE_GAS(m_statStream(_s.m_statStream))
+    ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_s.m_analysisEnv))
 {
     m_committedToSeal = false;
 }
@@ -197,7 +197,7 @@ PopulationStatistics Block::populateFromChain(BlockChain const& _bc, h256 const&
         // We know there are no transactions, so just populate directly.
         m_state = State(m_state.accountStartNonce(),
                         m_state.db()
-                        ADD_IF_ETH_MEASURE_GAS(m_statStream),
+                        ADD_IF_ETH_MEASURE_GAS(m_analysisEnv),
                         BaseState::Empty);	// TODO: try with PreExisting.
         sync(_bc, _h, bi);
     }
