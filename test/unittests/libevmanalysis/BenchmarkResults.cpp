@@ -1,9 +1,10 @@
-#include <libdevcore/BenchmarkResults.h>
+#include <libevmanalysis/BenchmarkResults.h>
 
 #include <gtest/gtest.h>
 
 using namespace std;
 using namespace dev;
+using namespace eth;
 
 TEST(BenchmarkResults, addMeasurement)
 {

@@ -129,6 +129,10 @@ add_subdirectory(libethashseal)
 add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
 
+if (MEASURE_GAS)
+    add_subdirectory(libevmanalysis)
+endif()
+
 add_subdirectory(aleth)
 
 if (TOOLS)

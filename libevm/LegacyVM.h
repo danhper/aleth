@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <libdevcore/BenchmarkResults.h>
 #include <map>
 
 #include "Instruction.h"

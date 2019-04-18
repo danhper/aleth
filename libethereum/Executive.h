@@ -15,17 +15,20 @@
 #pragma once
 
 #include "Transaction.h"
-#include "InstructionStats.h"
 
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
-#include <libdevcore/SystemUsageStatCollector.h>
-#include <libdevcore/BenchmarkResults.h>
 #include <libevm/VMFace.h>
 
 #include <json/json.h>
 #include <functional>
 #include <map>
+
+#ifdef ETH_MEASURE_GAS
+#include <libevmanalysis/SystemUsageStatCollector.h>
+#include <libevmanalysis/InstructionStats.h>
+#include <libevmanalysis/BenchmarkResults.h>
+#endif
 
 #ifndef BENCHMARK_GRANULARITY
 #define BENCHMARK_GRANULARITY 1000
@@ -204,9 +207,10 @@ public:
     OnOpFunc traceInstructions();
 
     /// Operations function to benchmark instructions
-    std::pair<OnOpFunc, OnOpFunc> benchmarkInstructions(
-        std::map<Instruction, BenchmarkResults>& benchmarkResults
-    );
+    OnOpFunc benchmarkInstructionsOp();
+
+    /// Operations function to save benchmark instructions
+    OnOpFunc benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmark);
 
     // Go function accepting an after operation
     bool go(OnOpFunc const& _onOp, OnOpFunc const& _afterOp);
@@ -243,6 +247,8 @@ private:
     SystemUsageStat m_usageStat;
     bool m_usageStatCollected = false;
     InstructionStats m_instructionStats;
+    bool m_benchmarking = false;
+    clock_t m_benchmarkStart;
 #endif
 
     bool m_isCreation = false;
