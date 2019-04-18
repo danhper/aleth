@@ -2,39 +2,52 @@
 
 
 
-namespace dev {
-namespace eth {
+namespace dev
+{
+namespace eth
+{
 
 
 StoreKeyStats::StoreKeyStats() = default;
 
 
-void InstructionStats::recordWrite(const u256 &key, u256 originalValue, const u256 &currentValue, const u256 &newValue) {
+void InstructionStats::recordWrite(const u256 &key, u256 originalValue, const u256 &currentValue, const u256 &newValue)
+{
     auto res = m_changes.insert(std::make_pair(key, StoreKeyStats()));
     auto& stats = res.first->second;
-    if (!stats.initialValueSet) {
+    if (!stats.initialValueSet)
+    {
         stats.initialValueSet = true;
         stats.initialValue = std::move(originalValue);
     }
     stats.newValue = newValue;
     stats.writesCount++;
-    if (currentValue != newValue) {
+    if (currentValue != newValue)
+    {
         stats.changesCount++;
     }
 }
 
-void InstructionStats::recordRead(const u256 &key) {
+void InstructionStats::recordRead(const u256 &key)
+{
     auto res = m_changes.insert(std::make_pair(key, StoreKeyStats()));
     auto& stats = res.first->second;
     stats.readsCount++;
 }
 
-void InstructionStats::recordCreate(const u256 &size) {
+void InstructionStats::recordCreate(const u256 &size)
+{
     m_createCalls.push_back(size);
 }
 
-void InstructionStats::recordSuicide() {
+void InstructionStats::recordSuicide()
+{
     m_suicideCallsCount++;
+}
+
+void InstructionStats::recordCall(Instruction instruction)
+{
+    m_instructionCounts[std::move(instruction)]++;
 }
 
 
@@ -43,20 +56,25 @@ Json::Value InstructionStats::toJson() const {
     uint64_t writesCount = 0;
     uint64_t readsCount = 0;
     uint64_t storageAllocated = 0;
-    for (auto& changeKv : m_changes) {
+    for (auto& changeKv : m_changes)
+    {
         auto& change = changeKv.second;
         changesCount += change.changesCount;
         writesCount += change.writesCount;
         readsCount += change.readsCount;
-        if (change.initialValue == 0 && change.newValue != 0) {
+        if (change.initialValue == 0 && change.newValue != 0)
+        {
             storageAllocated++;
-        } else if (change.initialValue != 0 && change.newValue == 0) {
+        }
+        else if (change.initialValue != 0 && change.newValue == 0)
+        {
             storageAllocated--;
         }
     }
 
     uint64_t creationSize = 0;
-    for (const u256& size : m_createCalls) {
+    for (const u256& size : m_createCalls)
+    {
         creationSize += size.convert_to<uint64_t>();
     }
 
@@ -68,6 +86,13 @@ Json::Value InstructionStats::toJson() const {
     result["contracts.creationCount"] = m_createCalls.size();
     result["contracts.creationSize"] = creationSize;
     result["suicideCount"] = m_suicideCallsCount;
+
+    result["calls"] = Json::Value();
+    for (auto& kv : m_instructionCounts)
+    {
+        auto info = instructionInfo(kv.first);
+        result["calls"][info.name] = kv.second;
+    }
 
     return result;
 }

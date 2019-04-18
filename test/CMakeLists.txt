@@ -12,7 +12,6 @@ set(unittest_sources
     unittests/libdevcore/FixedHash.cpp
     unittests/libdevcore/RangeMask.cpp
     unittests/libdevcore/RLP.cpp
-    unittests/libdevcore/BenchmarkResults.cpp
 
     unittests/libdevcrypto/AES.cpp
 
@@ -37,12 +36,24 @@ set(unittest_sources
     unittests/libweb3jsonrpc/AccountHolder.cpp
 )
 
-add_executable(aleth-unittests ${unittest_sources})
-target_include_directories(aleth-unittests PRIVATE ${UTILS_INCLUDE_DIR})
-target_link_libraries(aleth-unittests PRIVATE
-    web3jsonrpc ethashseal devcrypto devcore
+set (evmanalysis_sources
+    unittests/libevmanalysis/BenchmarkResults.cpp
+    unittests/libevmanalysis/InstructionStats.cpp
+)
+
+set(private_link_libraries
+    web3jsonrpc ethashseal devcrypto devcore 
     GTest::gtest GTest::main
 )
+if (MEASURE_GAS)
+    set (unittest_sources ${unittest_sources} ${evmanalysis_sources})
+    set (private_link_libraries ${private_link_libraries} evmanalysis)
+endif()
+
+add_executable(aleth-unittests ${unittest_sources})
+target_include_directories(aleth-unittests PRIVATE ${UTILS_INCLUDE_DIR})
+
+target_link_libraries(aleth-unittests PRIVATE ${private_link_libraries})
 gtest_add_tests(TARGET aleth-unittests TEST_PREFIX unittests/ TEST_LIST unittests)
 set_tests_properties(${unittests} PROPERTIES TIMEOUT ${timeout})
 
@@ -51,6 +62,9 @@ file(GLOB_RECURSE sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cpp" "*.h" "*.
 
 # Skip unit tests included in aleth-unittests.
 list(REMOVE_ITEM sources ${unittest_sources})
+if (NOT MEASURE_GAS)
+    list(REMOVE_ITEM sources ${evmanalysis_sources})
+endif ()
 
 # search for test names and create ctest tests
 set(excludeSuites jsonrpc \"customTestSuite\" BlockQueueSuite)

@@ -510,19 +510,16 @@ OnOpFunc Executive::traceInstructions()
     };
 }
 
-
-std::pair<OnOpFunc, OnOpFunc> Executive::benchmarkInstructions(
-    std::map<Instruction, BenchmarkResults>& benchmarkResults
-)
+OnOpFunc Executive::benchmarkInstructionsOp()
 {
     static std::set<Instruction> supportedInstructions = {
         Instruction::ADD,
     };
 
-    auto start = clock();
-    auto benchmarking = false;
+    auto& start = m_benchmarkStart;
+    auto& benchmarking = m_benchmarking;
 
-    auto onOp = [&benchmarking, &start](uint64_t /* steps */, uint64_t /* PC */,
+    return [&benchmarking, &start](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
@@ -534,8 +531,14 @@ std::pair<OnOpFunc, OnOpFunc> Executive::benchmarkInstructions(
         benchmarking = true;
         start = clock();
     };
+}
 
-    auto afterOp = [&benchmarking, &start, &benchmarkResults](uint64_t /* steps */, uint64_t /* PC */,
+
+OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmark)
+{
+    auto& benchmarking = m_benchmarking;
+    auto& start = m_benchmarkStart;
+    return [&benchmarking, &start, &benchmark](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
@@ -544,17 +547,8 @@ std::pair<OnOpFunc, OnOpFunc> Executive::benchmarkInstructions(
             return;
         }
         auto ellapsed = clock() - start;
-        auto result = benchmarkResults.find(inst);
-        if (result == benchmarkResults.end())
-        {
-            auto pair = std::pair<Instruction, BenchmarkResults>(inst, BenchmarkResults(BENCHMARK_GRANULARITY));
-            auto inserted = benchmarkResults.insert(pair);
-            result = inserted.first;
-        }
-        result->second.addMeasurement(ellapsed);
+        benchmark.addMeasurement(inst, ellapsed);
     };
-
-    return std::pair<OnOpFunc, OnOpFunc>(onOp, afterOp);
 }
 #endif
 

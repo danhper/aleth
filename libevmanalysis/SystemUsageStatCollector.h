@@ -7,6 +7,8 @@
 
 namespace dev
 {
+namespace eth
+{
 
 struct SystemUsageStat {
     float clockTime;
@@ -29,4 +31,5 @@ private:
     size_t startMemoryDeallocated;
 };
 
+}
 }

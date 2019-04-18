@@ -6,6 +6,9 @@
 
 namespace dev
 {
+namespace eth
+{
+
 
 BenchmarkResults::BenchmarkResults(): BenchmarkResults(1) {}
 
@@ -67,4 +70,5 @@ double BenchmarkResults::stdev() const
     return std::sqrt(variance());
 }
 
+}
 }

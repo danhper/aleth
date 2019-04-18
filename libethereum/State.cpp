@@ -627,16 +627,16 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     u256 const startGasUsed = _envInfo.gasUsed();
 
 #if ETH_MEASURE_GAS
-    std::map<Instruction, BenchmarkResults> benchmarkResults;
+    static InstructionsBenchmark benchmarkResults(BENCHMARK_GRANULARITY);
     auto afterOp = OnOpFunc();
     auto traceOp = e.traceInstructions();
-    auto benchmarkOps = e.benchmarkInstructions(benchmarkResults);
-    // auto ops = std::vector<OnOpFunc>({traceOp, benchmarkOps.first});
+    auto benchmarkOp = e.benchmarkInstructionsOp();
+    auto ops = std::vector<OnOpFunc>({traceOp, benchmarkOp});
     if (!onOp)
     {
-        // onOp = compoundOnOpFunc(ops);
-        onOp = benchmarkOps.first;
-        afterOp = benchmarkOps.second;
+        onOp = compoundOnOpFunc(ops);
+        // onOp = e.benchmarkInstructionsOp();
+        afterOp = e.benchmarkInstructionsAfterOp(benchmarkResults);
     }
     bool const statusCode = executeTransaction(e, _t, onOp, afterOp);
     {

@@ -32,6 +32,9 @@ void operator delete(void* ptr) noexcept {
 namespace dev
 {
 
+namespace eth
+{
+
 static float getEllapsedSecs(timeval start, timeval end) {
     time_t ellapsed_us = end.tv_usec - start.tv_usec;
     return (float)ellapsed_us / 1000000;
@@ -72,4 +75,5 @@ SystemUsageStat SystemUsageStatCollector::getSystemStat() const {
     };
 }
 
+}
 }
