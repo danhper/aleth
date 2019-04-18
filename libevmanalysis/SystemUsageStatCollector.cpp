@@ -4,11 +4,9 @@
 #include <memory>
 #include <map>
 
-
 static thread_local size_t memoryAllocated = 0;
 static thread_local size_t memoryDeallocated = 0;
 
-#ifdef ETH_MEASURE_GAS
 #define MAX_SIZE 1000003
 static thread_local intptr_t memoryMapping[MAX_SIZE];
 
@@ -27,7 +25,11 @@ void operator delete(void* ptr) noexcept {
     memoryMapping[key] = 0;
     std::free(ptr);
 }
-#endif
+
+namespace
+{
+    const uint64_t microsecondsPerSeconds = 1000000;
+}
 
 namespace dev
 {
@@ -37,7 +39,7 @@ namespace eth
 
 static float getEllapsedSecs(timeval start, timeval end) {
     time_t ellapsed_us = end.tv_usec - start.tv_usec;
-    return (float)ellapsed_us / 1000000;
+    return (float)ellapsed_us / microsecondsPerSeconds;
 }
 
 static float getClockEllapsedSecs(clock_t start, clock_t stop) {
