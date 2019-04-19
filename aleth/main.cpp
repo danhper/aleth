@@ -356,7 +356,7 @@ int main(int argc, char** argv)
                        po::value<uint64_t>()->value_name("<n>"),
         ("granularity for the benchmark (<n> measurements aggregated)"));
     addAnalysisOptions("benchmark-blocks-interval",
-                       po::value<uint64_t>()->value_name("<n>"),
+                       po::value<int64_t>()->value_name("<n>"),
         ("print results every <n> blocks"));
 #endif
 
