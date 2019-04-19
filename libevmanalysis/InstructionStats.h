@@ -30,7 +30,7 @@ public:
     void recordRead(const u256 &key);
     void recordCreate(const u256 &size);
     void recordSuicide();
-    void recordCall(Instruction instruction);
+    void recordInstruction(Instruction instruction);
 
     Json::Value toJson() const;
 

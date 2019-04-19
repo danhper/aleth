@@ -240,7 +240,6 @@ private:
     SystemUsageStat m_usageStat;
     bool m_usageStatCollected = false;
     InstructionStats m_instructionStats;
-    bool m_benchmarking = false;
     clock_t m_benchmarkStart;
 #endif
 

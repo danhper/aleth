@@ -70,5 +70,18 @@ double BenchmarkResults::stdev() const
     return std::sqrt(variance());
 }
 
+Json::Value BenchmarkResults::toJson() const
+{
+    Json::Value result;
+    result["count"] = count();
+    result["sum"] = sum();
+    result["squared_sum"] = squaredSum();
+    result["granularity"] = granularity();
+    result["mean"] = mean();
+    result["variance"] = variance();
+    result["stdev"] = stdev();
+    return result;
+}
+
 }
 }

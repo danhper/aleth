@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <utility>
 #include <map>
+#include <memory>
+
+#include <json/json.h>
 
 #include <libevm/Instruction.h>
 
@@ -29,6 +32,8 @@ public:
     double variance() const;
     double stdev() const;
 
+    Json::Value toJson() const;
+
 private:
     uint64_t m_count;
     uint64_t m_sum;
@@ -50,6 +55,8 @@ public:
     uint64_t totalCount() const { return m_totalCount; }
 
     void addMeasurement(const T& key, uint64_t value);
+
+    Json::Value toJson() const;
 private:
     std::map<T, BenchmarkResults> m_results;
     uint64_t m_totalCount = 0;
@@ -69,6 +76,32 @@ void BenchmarkResultsMap<T>::addMeasurement(const T& key, uint64_t value)
     }
     result->second.addMeasurement(value);
 }
+
+template <typename T>
+Json::Value BenchmarkResultsMap<T>::toJson() const
+{
+    Json::Value result;
+    result["granularity"] = m_granularity;
+    result["total_count"] = m_totalCount;
+    result["stats"] = Json::Value();
+    for (auto& kv : m_results)
+    {
+        result["stats"][instructionInfo(kv.first).name] = kv.second.toJson();
+    }
+    return result;
+}
+
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const BenchmarkResultsMap<T>& v)
+{
+    Json::StreamWriterBuilder builder;
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+    writer->write(v.toJson(), &os);
+    return os;
+}
+
 
 using InstructionsBenchmark = BenchmarkResultsMap<eth::Instruction>;
 

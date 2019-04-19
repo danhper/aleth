@@ -21,7 +21,6 @@ private:
     std::shared_ptr<std::ostream> m_streamPtr;
     std::shared_ptr<std::ofstream> m_filePtr;
     std::shared_ptr<boost::iostreams::filtering_ostreambuf> m_ostreamBuf;
-
 };
 
 }

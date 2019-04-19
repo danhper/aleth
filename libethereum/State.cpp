@@ -638,8 +638,12 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     }
     bool const statusCode = executeTransaction(e, _t, onOp, afterOp);
     {
-        boost::mutex::scoped_lock scoped_lock(m_statStreamLock);
+        boost::mutex::scoped_lock scoped_lock(analysisEnv()->statStreamLock());
         e.outputResults(analysisEnv()->statStream());
+    }
+    if (_envInfo.number() % 100 == 0)
+    {
+        analysisEnv()->outputInstructionsBenchmark(_envInfo.number());
     }
 #else
     bool const statusCode = executeTransaction(e, _t, onOp);

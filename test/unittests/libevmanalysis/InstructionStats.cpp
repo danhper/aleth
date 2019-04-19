@@ -6,12 +6,12 @@ using namespace std;
 using namespace dev;
 using namespace eth;
 
-TEST(InstructionStats, recordCall)
+TEST(InstructionStats, recordInstruction)
 {
     auto stats = InstructionStats();
-    stats.recordCall(Instruction::ADD);
-    stats.recordCall(Instruction::ADD);
-    stats.recordCall(Instruction::SUB);
+    stats.recordInstruction(Instruction::ADD);
+    stats.recordInstruction(Instruction::ADD);
+    stats.recordInstruction(Instruction::SUB);
     auto json = stats.toJson();
     EXPECT_EQ(json["calls"].size(), 2);
     EXPECT_EQ(json["calls"]["ADD"].asUInt64(), 2);
