@@ -469,28 +469,17 @@ OnOpFunc Executive::simpleTrace()
 #if ETH_MEASURE_GAS
 OnOpFunc Executive::traceInstructions()
 {
-    static std::set<Instruction> supportedInstructions = {
-        Instruction::SSTORE,
-        Instruction::SLOAD,
-        Instruction::SUICIDE,
-        Instruction::CREATE,
-        Instruction::CREATE2,
-    };
     auto& instructionStats = m_instructionStats;
 
     return [&instructionStats](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* _vm, ExtVMFace const* voidExt) {
-
-        if (supportedInstructions.find(inst) == supportedInstructions.end())
-        {
-            return;
-        }
-
         ExtVM const& ext = *dynamic_cast<ExtVM const*>(voidExt);
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
         auto stack = vm->stack();
+
+        instructionStats.recordInstruction(inst);
 
         switch (inst)
         {
@@ -538,23 +527,12 @@ OnOpFunc Executive::traceInstructions()
 
 OnOpFunc Executive::benchmarkInstructionsOp()
 {
-    static std::set<Instruction> supportedInstructions = {
-        Instruction::ADD,
-    };
-
     auto& start = m_benchmarkStart;
-    auto& benchmarking = m_benchmarking;
 
-    return [&benchmarking, &start](uint64_t /* steps */, uint64_t /* PC */,
-                           Instruction inst, bigint /* newMemSize */,
+    return [&start](uint64_t /* steps */, uint64_t /* PC */,
+                           Instruction /* inst */, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        benchmarking = false;
-        if (supportedInstructions.find(inst) == supportedInstructions.end())
-        {
-            return;
-        }
-        benchmarking = true;
         start = clock();
     };
 }
@@ -562,16 +540,11 @@ OnOpFunc Executive::benchmarkInstructionsOp()
 
 OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmark)
 {
-    auto& benchmarking = m_benchmarking;
     auto& start = m_benchmarkStart;
-    return [&benchmarking, &start, &benchmark](uint64_t /* steps */, uint64_t /* PC */,
+    return [&start, &benchmark](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        if (!benchmarking)
-        {
-            return;
-        }
         auto ellapsed = clock() - start;
         benchmark.addMeasurement(inst, ellapsed);
     };
@@ -722,7 +695,7 @@ void Executive::outputResults(std::ostream& os)
     root["usage"]["memory_allocated"] = m_usageStat.memoryAllocated;
     root["usage"]["extra_memory_allocated"] = m_usageStat.extraMemoryAllocated;
 
-    root["storage"] = m_instructionStats.toJson();
+    root["instructions"] = m_instructionStats.toJson();
 
     if (m_res)
     {

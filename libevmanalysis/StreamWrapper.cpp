@@ -25,14 +25,10 @@ namespace dev
 
 StreamWrapper::StreamWrapper(const std::string& filepath, std::ios_base::openmode openMode)
 {
-    std::shared_ptr<boost::iostreams::filtering_ostreambuf> ostreamBuf;
     if (filepath == "-") {
         m_streamPtr = std::shared_ptr<std::ostream>(&std::cout, nop());
     } else {
-        auto flags = std::ios_base::out;
-        if (openMode > 0) {
-            flags |= static_cast<std::ios_base::openmode>(openMode);
-        }
+        auto flags = openMode | std::ios_base::out;
         if (isGz(filepath)) {
             flags |= std::ios_base::binary;
         }
@@ -41,7 +37,7 @@ StreamWrapper::StreamWrapper(const std::string& filepath, std::ios_base::openmod
             m_ostreamBuf = std::make_shared<boost::iostreams::filtering_ostreambuf>();
             m_ostreamBuf->push(boost::iostreams::gzip_compressor());
             m_ostreamBuf->push(*m_filePtr);
-            m_streamPtr = std::make_shared<std::ostream>(ostreamBuf.get());
+            m_streamPtr = std::make_shared<std::ostream>(m_ostreamBuf.get());
         } else {
             m_streamPtr = m_filePtr;
         }

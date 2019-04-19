@@ -184,8 +184,9 @@ int main(int argc, char** argv)
 
 #ifdef ETH_MEASURE_GAS
     std::string measureGasPath("gas-measurements.jsonl.gz");
-    std::string benchmarkPath("benchmark.json");
+    std::string benchmarkPath("benchmark.jsonl");
     uint64_t benchmarkGranularity = 1000;
+    uint64_t benchmarkBlocksInterval = 1000;
 #endif
 
     strings passwordsToNote;
@@ -353,8 +354,11 @@ int main(int argc, char** argv)
     addAnalysisOptions("benchmark-file", po::value<string>()->value_name("<path>"),
         ("file to output benchmark results"));
     addAnalysisOptions("benchmark-granularity",
-                       po::value<uint64_t>()->value_name("<benchmark-granularity>"),
-        ("granularity for the benchmark"));
+                       po::value<uint64_t>()->value_name("<n>"),
+        ("granularity for the benchmark (<n> measurements aggregated)"));
+    addAnalysisOptions("benchmark-blocks-interval",
+                       po::value<uint64_t>()->value_name("<n>"),
+        ("print results every <n> blocks"));
 #endif
 
     po::options_description generalOptions("GENERAL OPTIONS", c_lineWidth);
@@ -729,6 +733,10 @@ int main(int argc, char** argv)
     {
         benchmarkGranularity = vm["benchmark-granularity"].as<uint64_t>();
     }
+    if (vm.count("benchmark-blocks-interval"))
+    {
+        benchmarkBlocksInterval = vm["benchmark-blocks-interval"].as<int64_t>();
+    }
 #endif
 
     setupLogging(loggingOptions);
@@ -798,9 +806,16 @@ int main(int argc, char** argv)
 
 #ifdef ETH_MEASURE_GAS
     auto statStreamWrapper = StreamWrapper(measureGasPath);
+    auto benchmarkStreamWrapper = StreamWrapper(benchmarkPath);
     InstructionsBenchmark instructionsBenchmark(benchmarkGranularity);
-    auto analysisEnv = std::make_shared<AnalysisEnv>(statStreamWrapper.getStream(),
-                                                     instructionsBenchmark);
+
+    auto analysisEnv = std::make_shared<AnalysisEnv>(
+        statStreamWrapper.getStream(),
+        benchmarkStreamWrapper.getStream(),
+        instructionsBenchmark,
+        benchmarkBlocksInterval
+    );
+
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
         snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode, analysisEnv);
 #else

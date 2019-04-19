@@ -45,7 +45,7 @@ void InstructionStats::recordSuicide()
     m_suicideCallsCount++;
 }
 
-void InstructionStats::recordCall(Instruction instruction)
+void InstructionStats::recordInstruction(Instruction instruction)
 {
     m_instructionCounts[std::move(instruction)]++;
 }

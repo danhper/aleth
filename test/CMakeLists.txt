@@ -41,6 +41,7 @@ set(unittest_sources
 set (evmanalysis_sources
     unittests/libevmanalysis/BenchmarkResults.cpp
     unittests/libevmanalysis/InstructionStats.cpp
+    unittests/libevmanalysis/StreamWrapper.cpp
 )
 
 set(private_link_libraries

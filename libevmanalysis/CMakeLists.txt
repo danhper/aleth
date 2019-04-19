@@ -11,5 +11,5 @@ add_library(evmanalysis ${sources})
 target_link_libraries(
     evmanalysis
     PUBLIC evm
-    PRIVATE Boost::iostreams
+    PRIVATE Boost::iostreams Boost::thread
 )

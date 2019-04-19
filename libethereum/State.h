@@ -408,7 +408,6 @@ private:
 
 #ifdef ETH_MEASURE_GAS
     std::shared_ptr<AnalysisEnv> m_analysisEnv = nullptr;
-    boost::mutex m_statStreamLock;
 
     bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp);
 #endif
