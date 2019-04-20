@@ -55,11 +55,19 @@ void BenchmarkResults::merge(const BenchmarkResults& other)
 
 double BenchmarkResults::mean() const
 {
+    if (m_count == 0)
+    {
+        return 0;
+    }
     return static_cast<double>(m_sum) / m_count;
 }
 
 double BenchmarkResults::variance() const
 {
+    if (m_count == 0)
+    {
+        return m_count;
+    }
     auto dataMean = mean();
     auto squaredMean = static_cast<double>(m_squaredSum) / m_count;
     return squaredMean - (dataMean * dataMean);
