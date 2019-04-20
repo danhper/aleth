@@ -507,7 +507,7 @@ OnOpFunc Executive::benchmarkInstructionsOp()
                            Instruction /* inst */, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        start = clock();
+        clock_gettime(CLOCK_REALTIME, &start);
     };
 }
 
@@ -515,11 +515,13 @@ OnOpFunc Executive::benchmarkInstructionsOp()
 OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmark)
 {
     auto& start = m_benchmarkStart;
-    return [&start, &benchmark](uint64_t /* steps */, uint64_t /* PC */,
+    auto& end = m_benchmarkEnd;
+    return [&start, &end, &benchmark](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        auto ellapsed = clock() - start;
+        clock_gettime(CLOCK_REALTIME, &end);
+        auto ellapsed = end.tv_nsec - start.tv_nsec;
         benchmark.addMeasurement(inst, ellapsed);
     };
 }
