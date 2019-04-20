@@ -247,7 +247,8 @@ private:
     SystemUsageStat m_usageStat;
     bool m_usageStatCollected = false;
     InstructionStats m_instructionStats;
-    clock_t m_benchmarkStart;
+    timespec m_benchmarkStart;
+    timespec m_benchmarkEnd;
 #endif
 
     bool m_isCreation = false;
