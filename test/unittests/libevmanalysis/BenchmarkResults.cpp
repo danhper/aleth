@@ -15,24 +15,6 @@ TEST(BenchmarkResults, addMeasurement)
     EXPECT_EQ(results.count(), 2);
 }
 
-TEST(BenchmarkResults, sum)
-{
-    auto results = BenchmarkResults();
-    results.addMeasurement(1);
-    EXPECT_EQ(results.sum(), 1);
-    results.addMeasurement(2);
-    EXPECT_EQ(results.sum(), 3);
-}
-
-TEST(BenchmarkResults, squaredSum)
-{
-    auto results = BenchmarkResults();
-    results.addMeasurement(1);
-    EXPECT_EQ(results.squaredSum(), 1);
-    results.addMeasurement(2);
-    EXPECT_EQ(results.squaredSum(), 5);
-}
-
 TEST(BenchmarkResults, mean)
 {
     auto results = BenchmarkResults();
