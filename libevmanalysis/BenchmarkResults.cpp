@@ -25,9 +25,10 @@ void BenchmarkResults::addMeasurement(uint64_t measurement)
     if (m_currentMeasurementCount + 1 >= m_granularity)
     {
         m_currentMeasurement += measurement;
+        auto newValue = static_cast<double>(m_currentMeasurement) / m_granularity;
         m_count += 1;
-        m_sum += m_currentMeasurement;
-        m_squaredSum += m_currentMeasurement * m_currentMeasurement;
+        m_sum += newValue;
+        m_squaredSum += newValue * newValue;
         m_currentMeasurement = 0;
         m_currentMeasurementCount = 0;
     }
@@ -59,7 +60,7 @@ double BenchmarkResults::mean() const
     {
         return 0;
     }
-    return static_cast<double>(m_sum) / m_count;
+    return m_sum / m_count;
 }
 
 double BenchmarkResults::variance() const
@@ -69,7 +70,7 @@ double BenchmarkResults::variance() const
         return m_count;
     }
     auto dataMean = mean();
-    auto squaredMean = static_cast<double>(m_squaredSum) / m_count;
+    auto squaredMean = m_squaredSum / m_count;
     return squaredMean - (dataMean * dataMean);
 }
 
