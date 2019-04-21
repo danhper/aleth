@@ -5,6 +5,8 @@
 #include <map>
 #include <memory>
 
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
 #include <json/json.h>
 
 #include <libevm/Instruction.h>
@@ -21,13 +23,10 @@ public:
     explicit BenchmarkResults(uint64_t granularity);
 
     void addMeasurement(uint64_t measurement);
-    void merge(const BenchmarkResults& other);
 
-    uint64_t count() const { return m_count; }
-    uint64_t sum() const { return m_sum; }
-    uint64_t squaredSum() const { return m_squaredSum; }
     uint64_t granularity() const { return m_granularity; }
 
+    uint64_t count() const;
     double mean() const;
     double variance() const;
     double stdev() const;
@@ -35,10 +34,10 @@ public:
     Json::Value toJson() const;
 
 private:
-    uint64_t m_count;
-
-    double m_sum;
-    double m_squaredSum;
+    boost::accumulators::accumulator_set<double,
+        boost::accumulators::features<boost::accumulators::tag::count,
+                                      boost::accumulators::tag::mean,
+                                      boost::accumulators::tag::variance>> m_acc;
 
     const uint64_t m_granularity;
     uint64_t m_currentMeasurement;
