@@ -186,7 +186,7 @@ int main(int argc, char** argv)
     std::string measureGasPath("gas-measurements.jsonl.gz");
     std::string benchmarkPath("benchmark.jsonl");
     uint64_t benchmarkGranularity = 1000;
-    uint64_t benchmarkBlocksInterval = 1000;
+    uint64_t benchmarkBlocksInterval = 100;
 #endif
 
     strings passwordsToNote;

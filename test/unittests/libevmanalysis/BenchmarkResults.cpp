@@ -62,5 +62,5 @@ TEST(BenchmarkResults, addMeasurementWithGranularity)
     EXPECT_EQ(results.count(), 1);
     results.addMeasurement(1);
     EXPECT_EQ(results.count(), 2);
-    EXPECT_FLOAT_EQ(results.mean(), 4.5);
+    EXPECT_FLOAT_EQ(results.mean(), 2.25);
 }

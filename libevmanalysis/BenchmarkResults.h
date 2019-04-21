@@ -36,8 +36,9 @@ public:
 
 private:
     uint64_t m_count;
-    uint64_t m_sum;
-    uint64_t m_squaredSum;
+
+    double m_sum;
+    double m_squaredSum;
 
     const uint64_t m_granularity;
     uint64_t m_currentMeasurement;

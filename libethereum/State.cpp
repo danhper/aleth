@@ -668,7 +668,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
         boost::mutex::scoped_lock scoped_lock(analysisEnv()->statStreamLock());
         e.outputResults(analysisEnv()->statStream());
     }
-    if (_envInfo.number() % 100 == 0)
+    if (_envInfo.number() % analysisEnv()->benchmarkInteval() == 0)
     {
         analysisEnv()->outputInstructionsBenchmark(_envInfo.number());
     }
