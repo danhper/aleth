@@ -528,12 +528,13 @@ OnOpFunc Executive::traceInstructions()
 OnOpFunc Executive::benchmarkInstructionsOp()
 {
     auto& start = m_benchmarkStart;
+    auto& benchmarking = m_benchmarking;
 
-    return [&start](uint64_t /* steps */, uint64_t /* PC */,
+    return [&start, &benchmarking](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction /* inst */, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        clock_gettime(CLOCK_REALTIME, &start);
+        benchmarking = clock_gettime(CLOCK_REALTIME, &start) == 0;
     };
 }
 
@@ -542,13 +543,20 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
 {
     auto& start = m_benchmarkStart;
     auto& end = m_benchmarkEnd;
-    return [&start, &end, &benchmark](uint64_t /* steps */, uint64_t /* PC */,
+    auto& benchmarking = m_benchmarking;
+    return [&start, &end, &benchmark, &benchmarking](uint64_t /* steps */, uint64_t /* PC */,
                            Instruction inst, bigint /* newMemSize */,
                            bigint /* gasCost */, bigint /* gas */,
                            VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        clock_gettime(CLOCK_REALTIME, &end);
-        auto ellapsed = end.tv_nsec - start.tv_nsec;
-        benchmark.addMeasurement(inst, ellapsed);
+        if (benchmarking && clock_gettime(CLOCK_REALTIME, &end) == 0)
+        {
+            auto ellapsed = end.tv_nsec - start.tv_nsec;
+            if (ellapsed < 0)
+            {
+                ellapsed = 0;
+            }
+            benchmark.addMeasurement(inst, ellapsed);
+        }
     };
 }
 #endif
