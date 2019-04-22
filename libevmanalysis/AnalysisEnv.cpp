@@ -4,7 +4,6 @@ namespace dev
 {
 namespace eth
 {
-
 void AnalysisEnv::outputInstructionsBenchmark(int64_t blockNumber, bool full)
 {
     auto root = m_instructionsBenchmark.toJson(full);
@@ -20,5 +19,5 @@ void AnalysisEnv::outputInstructionsBenchmark(int64_t blockNumber, bool full)
 }
 
 
-}
-}
+}  // namespace eth
+}  // namespace dev

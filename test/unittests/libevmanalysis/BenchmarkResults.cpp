@@ -18,7 +18,8 @@ TEST(BenchmarkResults, addMeasurement)
 TEST(BenchmarkResults, mean)
 {
     auto results = BenchmarkResults();
-    for (auto i = size_t(1); i <= 7; i++) {
+    for (auto i = size_t(1); i <= 7; i++)
+    {
         results.addMeasurement(i);
     }
     EXPECT_FLOAT_EQ(results.mean(), 4.0);
@@ -27,7 +28,8 @@ TEST(BenchmarkResults, mean)
 TEST(BenchmarkResults, stdev)
 {
     auto results = BenchmarkResults();
-    for (auto i = size_t(1); i <= 7; i++) {
+    for (auto i = size_t(1); i <= 7; i++)
+    {
         results.addMeasurement(i);
     }
     EXPECT_FLOAT_EQ(results.stdev(), 2.0);

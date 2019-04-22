@@ -1,17 +1,15 @@
 #include "InstructionStats.h"
 
 
-
 namespace dev
 {
 namespace eth
 {
-
-
 StoreKeyStats::StoreKeyStats() = default;
 
 
-void InstructionStats::recordWrite(const u256 &key, u256 originalValue, const u256 &currentValue, const u256 &newValue)
+void InstructionStats::recordWrite(
+    const u256& key, u256 originalValue, const u256& currentValue, const u256& newValue)
 {
     auto res = m_changes.insert(std::make_pair(key, StoreKeyStats()));
     auto& stats = res.first->second;
@@ -28,14 +26,14 @@ void InstructionStats::recordWrite(const u256 &key, u256 originalValue, const u2
     }
 }
 
-void InstructionStats::recordRead(const u256 &key)
+void InstructionStats::recordRead(const u256& key)
 {
     auto res = m_changes.insert(std::make_pair(key, StoreKeyStats()));
     auto& stats = res.first->second;
     stats.readsCount++;
 }
 
-void InstructionStats::recordCreate(const u256 &size)
+void InstructionStats::recordCreate(const u256& size)
 {
     m_createCalls.push_back(size);
 }
@@ -51,7 +49,8 @@ void InstructionStats::recordInstruction(Instruction instruction)
 }
 
 
-Json::Value InstructionStats::toJson() const {
+Json::Value InstructionStats::toJson() const
+{
     uint64_t changesCount = 0;
     uint64_t writesCount = 0;
     uint64_t readsCount = 0;
@@ -97,5 +96,5 @@ Json::Value InstructionStats::toJson() const {
     return result;
 }
 
-}
-}
+}  // namespace eth
+}  // namespace dev

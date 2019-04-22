@@ -1,13 +1,13 @@
 #pragma once
 
 #include <cstdint>
-#include <utility>
 #include <map>
 #include <memory>
+#include <utility>
 
+#include <json/json.h>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
-#include <json/json.h>
 
 #include <libevm/Instruction.h>
 
@@ -15,7 +15,6 @@ namespace dev
 {
 namespace eth
 {
-
 class BenchmarkResults
 {
 public:
@@ -37,8 +36,8 @@ private:
     std::vector<double> m_measurements;
     boost::accumulators::accumulator_set<double,
         boost::accumulators::features<boost::accumulators::tag::count,
-                                      boost::accumulators::tag::mean,
-                                      boost::accumulators::tag::variance>> m_acc;
+            boost::accumulators::tag::mean, boost::accumulators::tag::variance>>
+        m_acc;
 
     const uint64_t m_granularity;
     uint64_t m_currentMeasurement;
@@ -51,13 +50,13 @@ template <typename T>
 class BenchmarkResultsMap
 {
 public:
-    explicit BenchmarkResultsMap(uint64_t granularity)
-        : m_granularity(granularity) {}
+    explicit BenchmarkResultsMap(uint64_t granularity) : m_granularity(granularity) {}
     uint64_t totalCount() const { return m_totalCount; }
 
     void addMeasurement(const T& key, uint64_t value);
 
     Json::Value toJson(bool full = false) const;
+
 private:
     std::map<T, BenchmarkResults> m_results;
     uint64_t m_totalCount = 0;
@@ -107,5 +106,5 @@ std::ostream& operator<<(std::ostream& os, const BenchmarkResultsMap<T>& v)
 using InstructionsBenchmark = BenchmarkResultsMap<eth::Instruction>;
 
 
-}
-}
+}  // namespace eth
+}  // namespace dev

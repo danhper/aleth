@@ -1,19 +1,18 @@
 #pragma once
 
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <fstream>
 #include <memory>
 #include <ostream>
-#include <fstream>
-#include <boost/iostreams/filtering_streambuf.hpp>
 
 
 namespace dev
 {
-
 class StreamWrapper
 {
 public:
-    explicit StreamWrapper(const std::string& filepath,
-                           std::ios_base::openmode openMode = std::ios_base::app);
+    explicit StreamWrapper(
+        const std::string& filepath, std::ios_base::openmode openMode = std::ios_base::app);
 
     std::ostream& getStream() { return *m_streamPtr; }
 
@@ -23,4 +22,4 @@ private:
     std::shared_ptr<boost::iostreams::filtering_ostreambuf> m_ostreamBuf;
 };
 
-}
+}  // namespace dev

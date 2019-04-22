@@ -33,7 +33,8 @@ class LegacyVM: public VMFace
 public:
     virtual owning_bytes_ref exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 #ifdef ETH_MEASURE_GAS
-    virtual owning_bytes_ref exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, OnOpFunc const& _afterOp) override final;
+    virtual owning_bytes_ref exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp,
+        OnOpFunc const& _afterOp) override final;
 #endif
 
 #if EIP_615
@@ -151,7 +152,7 @@ private:
     OnOpFunc m_afterOp;
     void afterOperation();
 #endif
-    
+
     uint64_t decodeJumpDest(const byte* const _code, uint64_t& _pc);
     uint64_t decodeJumpvDest(const byte* const _code, uint64_t& _pc, byte _voff);
 

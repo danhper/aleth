@@ -72,12 +72,12 @@ public:
 	/// VM implementation
 	virtual owning_bytes_ref exec(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) = 0;
 #ifdef ETH_MEASURE_GAS
-    virtual owning_bytes_ref exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, OnOpFunc const&)
-	{
-		return exec(_io_gas, _ext, _onOp);
-	}
+    virtual owning_bytes_ref exec(
+        u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, OnOpFunc const&)
+    {
+        return exec(_io_gas, _ext, _onOp);
+    }
 #endif
-
 };
 
 /// Helpers:

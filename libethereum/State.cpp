@@ -49,21 +49,19 @@ State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs
 
 #ifdef ETH_MEASURE_GAS
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db,
-             std::shared_ptr<AnalysisEnv> _analysisEnv, BaseState _bs):
-    m_db(_db),
-    m_state(&m_db),
-    m_accountStartNonce(_accountStartNonce),
-    m_analysisEnv(_analysisEnv)
+    std::shared_ptr<AnalysisEnv> _analysisEnv, BaseState _bs)
+  : m_db(_db), m_state(&m_db), m_accountStartNonce(_accountStartNonce), m_analysisEnv(_analysisEnv)
 {
     if (_bs != BaseState::PreExisting)
-        // Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
+        // Initialise to the state entailed by the genesis block; this guarantees the trie is built
+        // correctly.
         m_state.init();
 }
 #endif
 
 
-State::State(State const& _s):
-    m_db(_s.m_db),
+State::State(State const& _s)
+  : m_db(_s.m_db),
     m_state(&m_db, _s.m_state.root(), Verification::Skip),
     m_cache(_s.m_cache),
     m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
@@ -71,9 +69,8 @@ State::State(State const& _s):
     m_touched(_s.m_touched),
     m_unrevertablyTouched(_s.m_unrevertablyTouched),
     m_accountStartNonce(_s.m_accountStartNonce)
-    ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_s.analysisEnv()))
-{
-}
+        ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_s.analysisEnv()))
+{}
 
 OverlayDB State::openDB(fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we)
 {
@@ -719,7 +716,8 @@ bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc co
     return executeTransaction(_e, _t, _onOp, OnOpFunc());
 }
 
-bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp)
+bool State::executeTransaction(
+    Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp)
 #else
 bool State::executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp)
 #endif

@@ -11,9 +11,8 @@ namespace dev
 {
 namespace eth
 {
-
-
-struct StoreKeyStats {
+struct StoreKeyStats
+{
     u256 initialValue;
     u256 newValue;
     uint64_t changesCount = 0;
@@ -24,11 +23,13 @@ struct StoreKeyStats {
     StoreKeyStats();
 };
 
-class InstructionStats {
+class InstructionStats
+{
 public:
-    void recordWrite(const u256 &key, u256 originalValue, const u256 &currentValue, const u256 &newValue);
-    void recordRead(const u256 &key);
-    void recordCreate(const u256 &size);
+    void recordWrite(
+        const u256& key, u256 originalValue, const u256& currentValue, const u256& newValue);
+    void recordRead(const u256& key);
+    void recordCreate(const u256& size);
     void recordSuicide();
     void recordInstruction(Instruction instruction);
 
@@ -41,5 +42,5 @@ private:
     std::map<Instruction, uint64_t> m_instructionCounts;
 };
 
-}
-}
+}  // namespace eth
+}  // namespace dev

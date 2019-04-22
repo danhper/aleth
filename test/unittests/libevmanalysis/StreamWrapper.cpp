@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <libevmanalysis/StreamWrapper.h>
+#include <stdio.h>
 
 #include <gtest/gtest.h>
 
