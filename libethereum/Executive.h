@@ -240,6 +240,7 @@ private:
     SystemUsageStat m_usageStat;
     bool m_usageStatCollected = false;
     InstructionStats m_instructionStats;
+    bool m_benchmarking = false;
     timespec m_benchmarkStart;
     timespec m_benchmarkEnd;
 #endif
