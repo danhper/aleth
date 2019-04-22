@@ -5,9 +5,9 @@ namespace dev
 namespace eth
 {
 
-void AnalysisEnv::outputInstructionsBenchmark(int64_t blockNumber)
+void AnalysisEnv::outputInstructionsBenchmark(int64_t blockNumber, bool full)
 {
-    auto root = m_instructionsBenchmark.toJson();
+    auto root = m_instructionsBenchmark.toJson(full);
     root["block_number"] = blockNumber;
     Json::StreamWriterBuilder builder;
     builder.settings_["indentation"] = "";

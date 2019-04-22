@@ -31,9 +31,10 @@ public:
     double variance() const;
     double stdev() const;
 
-    Json::Value toJson() const;
+    Json::Value toJson(bool full = false) const;
 
 private:
+    std::vector<double> m_measurements;
     boost::accumulators::accumulator_set<double,
         boost::accumulators::features<boost::accumulators::tag::count,
                                       boost::accumulators::tag::mean,
@@ -56,7 +57,7 @@ public:
 
     void addMeasurement(const T& key, uint64_t value);
 
-    Json::Value toJson() const;
+    Json::Value toJson(bool full = false) const;
 private:
     std::map<T, BenchmarkResults> m_results;
     uint64_t m_totalCount = 0;
@@ -78,7 +79,7 @@ void BenchmarkResultsMap<T>::addMeasurement(const T& key, uint64_t value)
 }
 
 template <typename T>
-Json::Value BenchmarkResultsMap<T>::toJson() const
+Json::Value BenchmarkResultsMap<T>::toJson(bool full) const
 {
     Json::Value result;
     result["granularity"] = m_granularity;
@@ -86,7 +87,7 @@ Json::Value BenchmarkResultsMap<T>::toJson() const
     result["stats"] = Json::Value();
     for (auto& kv : m_results)
     {
-        result["stats"][instructionInfo(kv.first).name] = kv.second.toJson();
+        result["stats"][instructionInfo(kv.first).name] = kv.second.toJson(full);
     }
     return result;
 }

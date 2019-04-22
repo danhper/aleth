@@ -33,7 +33,7 @@ public:
     InstructionsBenchmark& instructionsBenchmark() { return m_instructionsBenchmark; }
     boost::mutex& statStreamLock() { return m_statStreamLock; }
     int64_t benchmarkInteval() const { return m_benchmarkInterval; }
-    void outputInstructionsBenchmark(int64_t blockNumber);
+    void outputInstructionsBenchmark(int64_t blockNumber, bool full = false);
 
 private:
     std::ostream& m_statStream = std::cout;
