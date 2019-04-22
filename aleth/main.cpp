@@ -1109,5 +1109,10 @@ int main(int argc, char** argv)
         if (!netData.empty())
             writeFile(getDataDir() / fs::path(c_networkConfigFileName), netData);
     }
+
+#ifdef ETH_MEASURE_GAS
+    analysisEnv->outputInstructionsBenchmark(c.blockChain().number(), true);
+#endif
+
     return AlethErrors::Success;
 }
