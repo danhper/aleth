@@ -44,7 +44,6 @@ namespace test { class ImportTest; class StateLoader; }
 
 namespace eth
 {
-
 #ifdef ETH_MEASURE_GAS
 #define ADD_IF_ETH_MEASURE_GAS(arg) , arg
 #else
@@ -186,31 +185,29 @@ public:
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     explicit State(u256 const& _accountStartNonce)
-            : State(_accountStartNonce, OverlayDB(), BaseState::Empty) {}
+      : State(_accountStartNonce, OverlayDB(), BaseState::Empty)
+    {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
     explicit State(u256 const& _accountStartNonce, OverlayDB const& _db,
-                   BaseState _bs = BaseState::PreExisting
-    );
+        BaseState _bs = BaseState::PreExisting);
 
     enum NullType { Null };
     State(NullType) : State(Invalid256, OverlayDB(), BaseState::Empty) {}
 
 #ifdef ETH_MEASURE_GAS
     explicit State(u256 const& _accountStartNonce, std::shared_ptr<AnalysisEnv> _analysisEnv)
-            : State(_accountStartNonce, OverlayDB(), _analysisEnv, BaseState::Empty) {
-    }
-    explicit State(u256 const& _accountStartNonce,
-                   OverlayDB const& _db,
-                   std::shared_ptr<AnalysisEnv> _analysisEnv,
-                   BaseState _bs = BaseState::PreExisting
-    );
+      : State(_accountStartNonce, OverlayDB(), _analysisEnv, BaseState::Empty)
+    {}
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db,
+        std::shared_ptr<AnalysisEnv> _analysisEnv, BaseState _bs = BaseState::PreExisting);
 
     State(NullType, std::shared_ptr<AnalysisEnv> _analysisEnv)
-        : State(Invalid256, OverlayDB(), _analysisEnv, BaseState::Empty) {}
+      : State(Invalid256, OverlayDB(), _analysisEnv, BaseState::Empty)
+    {}
 #endif
 
 
@@ -407,7 +404,8 @@ private:
 #ifdef ETH_MEASURE_GAS
     std::shared_ptr<AnalysisEnv> m_analysisEnv = nullptr;
 
-    bool executeTransaction(Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp);
+    bool executeTransaction(
+        Executive& _e, Transaction const& _t, OnOpFunc const& _onOp, OnOpFunc const& _afterOp);
 #endif
 };
 

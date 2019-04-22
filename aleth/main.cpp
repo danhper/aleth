@@ -352,11 +352,9 @@ int main(int argc, char** argv)
         ("file to output gas measurements"));
     addAnalysisOptions("benchmark-file", po::value<string>()->value_name("<path>"),
         ("file to output benchmark results"));
-    addAnalysisOptions("benchmark-granularity",
-                       po::value<uint64_t>()->value_name("<n>"),
+    addAnalysisOptions("benchmark-granularity", po::value<uint64_t>()->value_name("<n>"),
         ("granularity for the benchmark (<n> measurements aggregated)"));
-    addAnalysisOptions("benchmark-blocks-interval",
-                       po::value<int64_t>()->value_name("<n>"),
+    addAnalysisOptions("benchmark-blocks-interval", po::value<int64_t>()->value_name("<n>"),
         ("print results every <n> blocks"));
 #endif
 
@@ -808,12 +806,8 @@ int main(int argc, char** argv)
     auto benchmarkStreamWrapper = StreamWrapper(benchmarkPath);
     InstructionsBenchmark instructionsBenchmark(benchmarkGranularity);
 
-    auto analysisEnv = std::make_shared<AnalysisEnv>(
-        statStreamWrapper.getStream(),
-        benchmarkStreamWrapper.getStream(),
-        instructionsBenchmark,
-        benchmarkBlocksInterval
-    );
+    auto analysisEnv = std::make_shared<AnalysisEnv>(statStreamWrapper.getStream(),
+        benchmarkStreamWrapper.getStream(), instructionsBenchmark, benchmarkBlocksInterval);
 
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
         snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode, analysisEnv);

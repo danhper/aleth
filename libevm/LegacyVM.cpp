@@ -229,7 +229,8 @@ void LegacyVM::fetchInstruction()
 // interpreter entry point
 
 #ifdef ETH_MEASURE_GAS
-owning_bytes_ref LegacyVM::exec(u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, OnOpFunc const& _afterOp)
+owning_bytes_ref LegacyVM::exec(
+    u256& _io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, OnOpFunc const& _afterOp)
 {
     m_afterOp = _afterOp;
     return exec(_io_gas, _ext, _onOp);

@@ -271,15 +271,13 @@ ExtVMFace::ExtVMFace(EnvInfo const& _envInfo, Address _myAddress, Address _calle
 
 OnOpFunc compoundOnOpFunc(const std::vector<OnOpFunc>& ops)
 {
-    return [&ops](uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize,
-                  bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt) {
+    return [&ops](uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost,
+               bigint gas, VMFace const* _vm, ExtVMFace const* voidExt) {
         for (auto& op : ops)
         {
             op(steps, PC, inst, newMemSize, gasCost, gas, _vm, voidExt);
         }
     };
 }
-
-
 }
 }

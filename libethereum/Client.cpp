@@ -73,9 +73,10 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, ActivityReport const& _r)
 
 Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     std::shared_ptr<GasPricer> _gpForAdoption, fs::path const& _dbPath,
-    fs::path const& _snapshotPath, WithExisting _forceAction, TransactionQueue::Limits const& _l
-    ADD_IF_ETH_MEASURE_GAS(std::shared_ptr<AnalysisEnv> _analysisEnv)
-) : Worker("eth", 0),
+    fs::path const& _snapshotPath, WithExisting _forceAction,
+    TransactionQueue::Limits const& _l ADD_IF_ETH_MEASURE_GAS(
+        std::shared_ptr<AnalysisEnv> _analysisEnv))
+  : Worker("eth", 0),
     m_bc(_params, _dbPath, _forceAction,
         [](unsigned d, unsigned t) {
             std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r";
@@ -85,7 +86,7 @@ Client::Client(ChainParams const& _params, int _networkID, p2p::Host& _host,
     m_preSeal(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_analysisEnv)),
     m_postSeal(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_analysisEnv)),
     m_working(chainParams().accountStartNonce ADD_IF_ETH_MEASURE_GAS(_analysisEnv))
-    ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_analysisEnv))
+        ADD_IF_ETH_MEASURE_GAS(m_analysisEnv(_analysisEnv))
 {
     init(_host, _dbPath, _snapshotPath, _forceAction, _networkID);
 }

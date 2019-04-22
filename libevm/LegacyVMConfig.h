@@ -434,8 +434,8 @@ namespace dev
     fetchInstruction(); \
     goto* jumpTable[(int)m_OP];
 
-#define BREAK          \
-    afterOperation();  \
+#define BREAK         \
+    afterOperation(); \
     return;
 
 #define CONTINUE        \

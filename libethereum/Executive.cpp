@@ -27,9 +27,9 @@
 
 #include <json/json.h>
 
-#include <sstream>
 #include <numeric>
 #include <set>
+#include <sstream>
 
 
 using namespace std;
@@ -445,10 +445,9 @@ OnOpFunc Executive::traceInstructions()
 {
     auto& instructionStats = m_instructionStats;
 
-    return [&instructionStats](uint64_t /* steps */, uint64_t /* PC */,
-                           Instruction inst, bigint /* newMemSize */,
-                           bigint /* gasCost */, bigint /* gas */,
-                           VMFace const* _vm, ExtVMFace const* voidExt) {
+    return [&instructionStats](uint64_t /* steps */, uint64_t /* PC */, Instruction inst,
+               bigint /* newMemSize */, bigint /* gasCost */, bigint /* gas */, VMFace const* _vm,
+               ExtVMFace const* voidExt) {
         ExtVM const& ext = *dynamic_cast<ExtVM const*>(voidExt);
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
         auto stack = vm->stack();
@@ -457,44 +456,47 @@ OnOpFunc Executive::traceInstructions()
 
         switch (inst)
         {
-            case Instruction::SSTORE:
+        case Instruction::SSTORE:
+        {
+            if (stack.size() <= 1)
             {
-                if (stack.size() <= 1) {
-                    break;
-                }
-                auto key = stack[stack.size() - 1];
-                auto newValue = stack[stack.size() - 2];
-                auto currentValue = ext.store(key);
-                auto originalValue = ext.originalStorageValue(key);
-                instructionStats.recordWrite(key, originalValue, currentValue, newValue);
                 break;
             }
-            case Instruction::SLOAD:
+            auto key = stack[stack.size() - 1];
+            auto newValue = stack[stack.size() - 2];
+            auto currentValue = ext.store(key);
+            auto originalValue = ext.originalStorageValue(key);
+            instructionStats.recordWrite(key, originalValue, currentValue, newValue);
+            break;
+        }
+        case Instruction::SLOAD:
+        {
+            if (stack.size() == 0)
             {
-                if (stack.size() == 0) {
-                    break;
-                }
-                auto key = stack[stack.size() - 1];
-                instructionStats.recordRead(key);
                 break;
             }
-            case Instruction::CREATE:
-            case Instruction::CREATE2:
+            auto key = stack[stack.size() - 1];
+            instructionStats.recordRead(key);
+            break;
+        }
+        case Instruction::CREATE:
+        case Instruction::CREATE2:
+        {
+            if (stack.size() <= 2)
             {
-                if (stack.size() <= 2) {
-                    break;
-                }
-                auto size = stack[stack.size() - 3];
-                instructionStats.recordCreate(size);
                 break;
             }
-            case Instruction::SUICIDE:
-            {
-                instructionStats.recordSuicide();
-                break;
-            }
-            default:
-                break;
+            auto size = stack[stack.size() - 3];
+            instructionStats.recordCreate(size);
+            break;
+        }
+        case Instruction::SUICIDE:
+        {
+            instructionStats.recordSuicide();
+            break;
+        }
+        default:
+            break;
         }
     };
 }
@@ -504,10 +506,9 @@ OnOpFunc Executive::benchmarkInstructionsOp()
     auto& start = m_benchmarkStart;
     auto& benchmarking = m_benchmarking;
 
-    return [&start, &benchmarking](uint64_t /* steps */, uint64_t /* PC */,
-                           Instruction /* inst */, bigint /* newMemSize */,
-                           bigint /* gasCost */, bigint /* gas */,
-                           VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
+    return [&start, &benchmarking](uint64_t /* steps */, uint64_t /* PC */, Instruction /* inst */,
+               bigint /* newMemSize */, bigint /* gasCost */, bigint /* gas */,
+               VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
         benchmarking = clock_gettime(CLOCK_REALTIME, &start) == 0;
     };
 }
@@ -519,9 +520,8 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
     auto& end = m_benchmarkEnd;
     auto& benchmarking = m_benchmarking;
     return [&start, &end, &benchmark, &benchmarking](uint64_t /* steps */, uint64_t /* PC */,
-                           Instruction inst, bigint /* newMemSize */,
-                           bigint /* gasCost */, bigint /* gas */,
-                           VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
+               Instruction inst, bigint /* newMemSize */, bigint /* gasCost */, bigint /* gas */,
+               VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
         if (benchmarking && clock_gettime(CLOCK_REALTIME, &end) == 0)
         {
             auto ellapsed = end.tv_nsec - start.tv_nsec;
@@ -542,7 +542,7 @@ bool Executive::go(OnOpFunc const& _onOp)
     return go(_onOp, OnOpFunc());
 }
 
-bool Executive::go(OnOpFunc const& _onOp, OnOpFunc const &_afterOp)
+bool Executive::go(OnOpFunc const& _onOp, OnOpFunc const& _afterOp)
 #else
 bool Executive::go(OnOpFunc const& _onOp)
 #endif
@@ -601,7 +601,6 @@ bool Executive::go(OnOpFunc const& _onOp)
                 auto vm = VMFactory::create();
                 m_output = vm->exec(m_gas, *m_ext, _onOp);
 #endif
-
             }
         }
         catch (RevertInstruction& _e)

@@ -110,9 +110,10 @@ class BlockChain
 public:
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path, WithExisting _we = WithExisting::Trust,
-               ProgressCallback const& _pc = ProgressCallback()
-               ADD_IF_ETH_MEASURE_GAS(std::shared_ptr<AnalysisEnv> _analysisEnv = nullptr));
+    BlockChain(ChainParams const& _p, boost::filesystem::path const& _path,
+        WithExisting _we = WithExisting::Trust,
+        ProgressCallback const& _pc = ProgressCallback()
+            ADD_IF_ETH_MEASURE_GAS(std::shared_ptr<AnalysisEnv> _analysisEnv = nullptr));
 
     ~BlockChain();
 

@@ -1,20 +1,18 @@
 #include "BenchmarkResults.h"
 
 #include <cmath>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
 
 namespace dev
 {
 namespace eth
 {
-
-BenchmarkResults::BenchmarkResults(): BenchmarkResults(1) {}
+BenchmarkResults::BenchmarkResults() : BenchmarkResults(1) {}
 
 BenchmarkResults::BenchmarkResults(uint64_t granularity)
-    : m_granularity(granularity),
-      m_currentMeasurement(0),
-      m_currentMeasurementCount(0) {}
+  : m_granularity(granularity), m_currentMeasurement(0), m_currentMeasurementCount(0)
+{}
 
 void BenchmarkResults::addMeasurement(uint64_t measurement)
 {
@@ -62,7 +60,8 @@ Json::Value BenchmarkResults::toJson(bool full) const
     result["mean"] = mean();
     result["variance"] = variance();
     result["stdev"] = stdev();
-    if (full) {
+    if (full)
+    {
         auto measurements = Json::Value(Json::arrayValue);
         for (auto measurement : m_measurements)
         {
@@ -73,5 +72,5 @@ Json::Value BenchmarkResults::toJson(bool full) const
     return result;
 }
 
-}
-}
+}  // namespace eth
+}  // namespace dev

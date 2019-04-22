@@ -25,9 +25,9 @@
 #include <map>
 
 #ifdef ETH_MEASURE_GAS
-#include <libevmanalysis/SystemUsageStatCollector.h>
-#include <libevmanalysis/InstructionStats.h>
 #include <libevmanalysis/BenchmarkResults.h>
+#include <libevmanalysis/InstructionStats.h>
+#include <libevmanalysis/SystemUsageStatCollector.h>
 #endif
 
 #ifndef BENCHMARK_GRANULARITY

@@ -1,16 +1,16 @@
 #pragma once
 
 #include <sys/resource.h>
-#include <ctime>
 #include <cstdint>
+#include <ctime>
 #include <memory>
 
 namespace dev
 {
 namespace eth
 {
-
-struct SystemUsageStat {
+struct SystemUsageStat
+{
     float clockTime;
     float userTime;
     float systemTime;
@@ -19,11 +19,13 @@ struct SystemUsageStat {
 };
 
 
-class SystemUsageStatCollector {
+class SystemUsageStatCollector
+{
 public:
     SystemUsageStatCollector();
     void reset();
     SystemUsageStat getSystemStat() const;
+
 private:
     clock_t startClock;
     rusage startUsage;
@@ -31,5 +33,5 @@ private:
     size_t startMemoryDeallocated;
 };
 
-}
-}
+}  // namespace eth
+}  // namespace dev
