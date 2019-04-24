@@ -249,6 +249,7 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
+    Logger m_warningLogger{createLogger(VerbosityWarning, "warning")};
     Logger m_execLogger{createLogger(VerbosityDebug, "exec")};
     Logger m_detailsLogger{createLogger(VerbosityTrace, "exec")};
     Logger m_vmTraceLogger{createLogger(VerbosityTrace, "vmtrace")};

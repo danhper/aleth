@@ -31,6 +31,7 @@ void operator delete(void* ptr) noexcept
 namespace
 {
 const uint64_t microsecondsPerSeconds = 1000000;
+const uint64_t nanosecondsPerSeconds = 1000 * microsecondsPerSeconds;
 }
 
 namespace dev
@@ -40,20 +41,34 @@ namespace eth
 static float getEllapsedSecs(timeval start, timeval end)
 {
     time_t ellapsed_us = end.tv_usec - start.tv_usec;
-    return (float)ellapsed_us / microsecondsPerSeconds;
+    return static_cast<float>(ellapsed_us) / microsecondsPerSeconds;
 }
 
 static float getClockEllapsedSecs(clock_t start, clock_t stop)
 {
     clock_t ellapsed_clock = stop - start;
-    return ellapsed_clock / (float)CLOCKS_PER_SEC;
+    return ellapsed_clock / static_cast<float>(CLOCKS_PER_SEC);
 }
 
-static rusage getCurrentUsage()
+static float getTimespecEllapsedSecs(timespec start, timespec stop)
 {
-    rusage usage;
-    getrusage(RUSAGE_SELF, &usage);
-    return usage;
+    auto startNs = start.tv_nsec * nanosecondsPerSeconds + start.tv_nsec;
+    auto endNs = stop.tv_nsec * nanosecondsPerSeconds + stop.tv_nsec;
+    auto ellapsed = endNs - startNs;
+    return static_cast<double>(ellapsed) / nanosecondsPerSeconds;
+}
+
+
+Json::Value SystemUsageStat::toJson() const
+{
+    Json::Value root;
+    root["clock_time"] = clockTime;
+    root["user_time"] = userTime;
+    root["monotonic_time"] = monotonicTime;
+    root["system_time"] = systemTime;
+    root["memory_allocated"] = memoryAllocated;
+    root["extra_memory_allocated"] = extraMemoryAllocated;
+    return root;
 }
 
 SystemUsageStatCollector::SystemUsageStatCollector()
@@ -63,20 +78,26 @@ SystemUsageStatCollector::SystemUsageStatCollector()
 
 void SystemUsageStatCollector::reset()
 {
-    startMemoryAllocated = memoryAllocated;
-    startMemoryDeallocated = memoryDeallocated;
-    startClock = clock();
-    startUsage = getCurrentUsage();
+    m_startMemoryAllocated = memoryAllocated;
+    m_startMemoryDeallocated = memoryDeallocated;
+    m_startClock = clock();
+    getrusage(RUSAGE_SELF, &m_startUsage);
 }
 
 SystemUsageStat SystemUsageStatCollector::getSystemStat() const
 {
-    auto totalMemoryAllocated = memoryAllocated - startMemoryAllocated;
-    auto totalMemoryDeallocated = memoryDeallocated - startMemoryDeallocated;
-    rusage end_usage = getCurrentUsage();
-    return {.clockTime = getClockEllapsedSecs(startClock, clock()),
-        .userTime = getEllapsedSecs(startUsage.ru_utime, end_usage.ru_utime),
-        .systemTime = getEllapsedSecs(startUsage.ru_stime, end_usage.ru_stime),
+    auto totalMemoryAllocated = memoryAllocated - m_startMemoryAllocated;
+    auto totalMemoryDeallocated = memoryDeallocated - m_startMemoryDeallocated;
+
+    timespec endTimespec;
+    clock_gettime(CLOCK_MONOTONIC, &endTimespec);
+
+    rusage endUsage;
+    getrusage(RUSAGE_SELF, &endUsage);
+    return {.clockTime = getClockEllapsedSecs(m_startClock, clock()),
+        .userTime = getEllapsedSecs(m_startUsage.ru_utime, endUsage.ru_utime),
+        .systemTime = getEllapsedSecs(m_startUsage.ru_stime, endUsage.ru_stime),
+        .monotonicTime = getTimespecEllapsedSecs(m_startTimespec, endTimespec),
         .memoryAllocated = totalMemoryAllocated,
         .extraMemoryAllocated =
             static_cast<int64_t>(totalMemoryAllocated - totalMemoryDeallocated)};

@@ -38,6 +38,8 @@ using namespace dev::eth;
 
 namespace
 {
+const int64_t nanosecondsPerSecond = 1000000000;
+
 std::string dumpStackAndMemory(LegacyVM const& _vm)
 {
     ostringstream o;
@@ -509,7 +511,7 @@ OnOpFunc Executive::benchmarkInstructionsOp()
     return [&start, &benchmarking](uint64_t /* steps */, uint64_t /* PC */, Instruction /* inst */,
                bigint /* newMemSize */, bigint /* gasCost */, bigint /* gas */,
                VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        benchmarking = clock_gettime(CLOCK_REALTIME, &start) == 0;
+        benchmarking = clock_gettime(CLOCK_MONOTONIC, &start) == 0;
     };
 }
 
@@ -519,14 +521,18 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
     auto& start = m_benchmarkStart;
     auto& end = m_benchmarkEnd;
     auto& benchmarking = m_benchmarking;
-    return [&start, &end, &benchmark, &benchmarking](uint64_t /* steps */, uint64_t /* PC */,
-               Instruction inst, bigint /* newMemSize */, bigint /* gasCost */, bigint /* gas */,
-               VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
-        if (benchmarking && clock_gettime(CLOCK_REALTIME, &end) == 0)
+    auto& logger = m_warningLogger;
+    return [&start, &end, &benchmark, &benchmarking, &logger](uint64_t /* steps */,
+               uint64_t /* PC */, Instruction inst, bigint /* newMemSize */, bigint /* gasCost */,
+               bigint /* gas */, VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
+        if (benchmarking && clock_gettime(CLOCK_MONOTONIC, &end) == 0)
         {
-            auto ellapsed = end.tv_nsec - start.tv_nsec;
+            auto ellapsed = (end.tv_sec * nanosecondsPerSecond + end.tv_nsec) -
+                            (start.tv_sec * nanosecondsPerSecond + start.tv_nsec);
             if (ellapsed < 0)
             {
+                LOG(logger) << "ellapsed time is negative: " << ellapsed
+                            << "ns, something might be wrong";
                 ellapsed = 0;
             }
             benchmark.addMeasurement(inst, ellapsed);
@@ -671,13 +677,7 @@ void Executive::outputResults(std::ostream& os)
     root["env"]["block"] = m_envInfo.number();
 
 
-    root["usage"] = Json::Value();
-    root["usage"]["clock_time"] = m_usageStat.clockTime;
-    root["usage"]["user_time"] = m_usageStat.userTime;
-    root["usage"]["system_time"] = m_usageStat.systemTime;
-    root["usage"]["memory_allocated"] = m_usageStat.memoryAllocated;
-    root["usage"]["extra_memory_allocated"] = m_usageStat.extraMemoryAllocated;
-
+    root["usage"] = m_usageStat.toJson();
     root["instructions"] = m_instructionStats.toJson();
 
     if (m_res)
