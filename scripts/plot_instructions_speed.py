@@ -28,6 +28,7 @@ def main():
 
     df = load_data(args.input)
     plot_data(df, args.instruction, args.output)
+    print(df.loc[args.instruction])
 
 
 if __name__ == "__main__":
