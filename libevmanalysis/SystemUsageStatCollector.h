@@ -5,6 +5,8 @@
 #include <ctime>
 #include <memory>
 
+#include <json/json.h>
+
 namespace dev
 {
 namespace eth
@@ -14,8 +16,11 @@ struct SystemUsageStat
     float clockTime;
     float userTime;
     float systemTime;
+    float monotonicTime;
     size_t memoryAllocated;
     int64_t extraMemoryAllocated;
+
+    Json::Value toJson() const;
 };
 
 
@@ -27,10 +32,11 @@ public:
     SystemUsageStat getSystemStat() const;
 
 private:
-    clock_t startClock;
-    rusage startUsage;
-    size_t startMemoryAllocated;
-    size_t startMemoryDeallocated;
+    clock_t m_startClock;
+    timespec m_startTimespec;
+    rusage m_startUsage;
+    size_t m_startMemoryAllocated;
+    size_t m_startMemoryDeallocated;
 };
 
 }  // namespace eth
