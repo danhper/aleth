@@ -40,7 +40,8 @@ namespace eth
 {
 static float getEllapsedSecs(timeval start, timeval end)
 {
-    time_t ellapsed_us = end.tv_usec - start.tv_usec;
+    time_t ellapsed_us = (end.tv_sec * microsecondsPerSeconds + end.tv_usec) -
+                         (start.tv_sec * microsecondsPerSeconds + start.tv_usec);
     return static_cast<float>(ellapsed_us) / microsecondsPerSeconds;
 }
 
