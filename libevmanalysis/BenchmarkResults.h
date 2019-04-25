@@ -13,8 +13,22 @@
 
 namespace dev
 {
+
+template <typename T>
+std::string keyToString(T value)
+{
+    std::stringstream ss;
+    ss << value;
+    return ss.str();
+}
+
+template <>
+std::string keyToString<eth::Instruction>(eth::Instruction instruction);
+
+
 namespace eth
 {
+
 class BenchmarkResults
 {
 public:
@@ -77,6 +91,7 @@ void BenchmarkResultsMap<T>::addMeasurement(const T& key, uint64_t value)
     result->second.addMeasurement(value);
 }
 
+
 template <typename T>
 Json::Value BenchmarkResultsMap<T>::toJson(bool full) const
 {
@@ -86,7 +101,7 @@ Json::Value BenchmarkResultsMap<T>::toJson(bool full) const
     result["stats"] = Json::Value();
     for (auto& kv : m_results)
     {
-        result["stats"][instructionInfo(kv.first).name] = kv.second.toJson(full);
+        result["stats"][keyToString(kv.first)] = kv.second.toJson(full);
     }
     return result;
 }

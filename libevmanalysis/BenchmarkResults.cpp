@@ -6,6 +6,13 @@
 
 namespace dev
 {
+
+template <>
+std::string keyToString<eth::Instruction>(eth::Instruction instruction)
+{
+    return instructionInfo(instruction).name;
+}
+
 namespace eth
 {
 BenchmarkResults::BenchmarkResults() : BenchmarkResults(1) {}
