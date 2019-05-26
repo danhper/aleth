@@ -4,6 +4,7 @@ set(sources
     BenchmarkResults.h BenchmarkResults.cpp
     AnalysisEnv.h AnalysisEnv.cpp
     StreamWrapper.h StreamWrapper.cpp
+    ExtendedInstruction.h ExtendedInstruction.cpp
 )
 
 add_library(evmanalysis ${sources})

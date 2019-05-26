@@ -25,6 +25,11 @@
 #include <libevm/LegacyVM.h>
 #include <libevm/VMFactory.h>
 
+#ifdef ETH_MEASURE_GAS
+#include <libevmanalysis/ExtendedInstruction.h>
+#endif
+
+
 #include <json/json.h>
 
 #include <numeric>
@@ -479,7 +484,9 @@ OnOpFunc Executive::traceInstructions()
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
         auto stack = vm->stack();
 
-        instructionStats.recordInstruction(inst);
+        auto einstruction = fromInstruction(inst, stack);
+
+        instructionStats.recordInstruction(einstruction);
 
         switch (inst)
         {

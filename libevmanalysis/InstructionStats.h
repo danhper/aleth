@@ -6,6 +6,7 @@
 
 #include <libethcore/Common.h>
 #include <libevm/Instruction.h>
+#include <libevmanalysis/ExtendedInstruction.h>
 
 namespace dev
 {
@@ -31,7 +32,7 @@ public:
     void recordRead(const u256& key);
     void recordCreate(const u256& size);
     void recordSuicide();
-    void recordInstruction(Instruction instruction);
+    void recordInstruction(ExtendedInstruction instruction);
 
     Json::Value toJson() const;
 
@@ -39,7 +40,7 @@ private:
     std::map<u256, StoreKeyStats> m_changes;
     std::vector<u256> m_createCalls;
     uint64_t m_suicideCallsCount = 0;
-    std::map<Instruction, uint64_t> m_instructionCounts;
+    std::map<ExtendedInstruction, uint64_t> m_instructionCounts;
 };
 
 }  // namespace eth
