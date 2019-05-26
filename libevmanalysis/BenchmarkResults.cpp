@@ -13,6 +13,13 @@ std::string keyToString<eth::Instruction>(eth::Instruction instruction)
     return instructionInfo(instruction).name;
 }
 
+template <>
+std::string keyToString<eth::ExtendedInstruction>(eth::ExtendedInstruction einstruction)
+{
+    return instructionName(einstruction);
+}
+
+
 namespace eth
 {
 BenchmarkResults::BenchmarkResults() : BenchmarkResults(1) {}
