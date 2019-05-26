@@ -556,7 +556,10 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
     auto& logger = m_warningLogger;
     return [&start, &end, &benchmark, &benchmarking, &logger](uint64_t /* steps */,
                uint64_t /* PC */, Instruction inst, bigint /* newMemSize */, bigint /* gasCost */,
-               bigint /* gas */, VMFace const* /* _vm */, ExtVMFace const* /* voidExt */) {
+               bigint /* gas */, VMFace const* _vm, ExtVMFace const* /* voidExt */) {
+        auto vm = dynamic_cast<LegacyVM const*>(_vm);
+        auto stack = vm->stack();
+
         if (benchmarking && clock_gettime(CLOCK_MONOTONIC, &end) == 0)
         {
             auto ellapsed = (end.tv_sec * nanosecondsPerSecond + end.tv_nsec) -
@@ -567,7 +570,8 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
                             << "ns, something might be wrong";
                 ellapsed = 0;
             }
-            benchmark.addMeasurement(inst, ellapsed);
+            auto einst = fromInstruction(inst, stack);
+            benchmark.addMeasurement(einst, ellapsed);
         }
     };
 }

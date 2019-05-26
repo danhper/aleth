@@ -9,6 +9,7 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 
+#include <libevmanalysis/ExtendedInstruction.h>
 #include <libevm/Instruction.h>
 
 namespace dev
@@ -24,6 +25,9 @@ std::string keyToString(T value)
 
 template <>
 std::string keyToString<eth::Instruction>(eth::Instruction instruction);
+
+template <>
+std::string keyToString<eth::ExtendedInstruction>(eth::ExtendedInstruction einstruction);
 
 
 namespace eth
@@ -118,7 +122,7 @@ std::ostream& operator<<(std::ostream& os, const BenchmarkResultsMap<T>& v)
 }
 
 
-using InstructionsBenchmark = BenchmarkResultsMap<eth::Instruction>;
+using InstructionsBenchmark = BenchmarkResultsMap<eth::ExtendedInstruction>;
 
 
 }  // namespace eth
