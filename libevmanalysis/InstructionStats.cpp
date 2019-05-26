@@ -43,9 +43,9 @@ void InstructionStats::recordSuicide()
     m_suicideCallsCount++;
 }
 
-void InstructionStats::recordInstruction(Instruction instruction)
+void InstructionStats::recordInstruction(ExtendedInstruction einstruction)
 {
-    m_instructionCounts[std::move(instruction)]++;
+    m_instructionCounts[std::move(einstruction)]++;
 }
 
 
@@ -89,8 +89,8 @@ Json::Value InstructionStats::toJson() const
     result["calls"] = Json::Value();
     for (auto& kv : m_instructionCounts)
     {
-        auto info = instructionInfo(kv.first);
-        result["calls"][info.name] = kv.second;
+        auto name = instructionName(kv.first);
+        result["calls"][name] = kv.second;
     }
 
     return result;
