@@ -23,7 +23,7 @@ std::string instructionName(ExtendedInstruction einstruction)
 
 ExtendedInstruction fromInstruction(Instruction instruction, u256s stack)
 {
-    if (instruction == Instruction::CALL || stack[1] <= 3)
+    if (instruction == Instruction::CALL && stack.size() >= 2 && stack[1] <= 3)
     {
         auto address = stack[1].convert_to<uint8_t>();
         switch (address)
