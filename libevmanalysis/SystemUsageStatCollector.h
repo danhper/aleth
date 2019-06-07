@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ctime>
 #include <memory>
+#include <chrono>
 
 #include <json/json.h>
 
@@ -17,6 +18,7 @@ struct SystemUsageStat
     float userTime;
     float systemTime;
     float monotonicTime;
+    float chronoTime;
     size_t memoryAllocated;
     int64_t extraMemoryAllocated;
 
@@ -37,6 +39,7 @@ private:
     rusage m_startUsage;
     size_t m_startMemoryAllocated;
     size_t m_startMemoryDeallocated;
+    std::chrono::high_resolution_clock::time_point m_startChrono;
 };
 
 }  // namespace eth

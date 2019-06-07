@@ -677,7 +677,7 @@ static std::string u256ToString(const u256& value)
     return ss.str();
 }
 
-void Executive::outputResults(std::ostream& os)
+void Executive::outputResults(std::ostream& os, bool includeInput)
 {
     if (!m_usageStatCollected || !m_t)
     {
@@ -708,6 +708,11 @@ void Executive::outputResults(std::ostream& os)
         root["transaction"]["gas_used"] = u256ToString(m_res->gasUsed);
         root["transaction"]["output_size"] = m_res->output.size();
         root["transaction"]["excepted"] = static_cast<int>(m_res->excepted);
+        if (includeInput) {
+            root["transaction"]["output"] = toHex(m_res->output);
+        }
+
+        root["usage"]["gas/s"] = m_res->gasUsed.convert_to<double>() / m_usageStat.chronoTime;
     }
 
     Json::StreamWriterBuilder builder;

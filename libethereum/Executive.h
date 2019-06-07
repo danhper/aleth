@@ -199,7 +199,7 @@ public:
 
 #if ETH_MEASURE_GAS
     /// Output measurements
-    void outputResults(std::ostream& os);
+    void outputResults(std::ostream& os, bool includeInput = false);
 
     /// Operation function to trace changes to the store during gas execution
     OnOpFunc traceInstructions();

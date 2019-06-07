@@ -241,6 +241,7 @@ void Client::startedWorking()
 
     DEV_WRITE_GUARDED(x_preSeal)
         m_preSeal.sync(bc());
+
     DEV_READ_GUARDED(x_preSeal)
     {
         DEV_WRITE_GUARDED(x_working)

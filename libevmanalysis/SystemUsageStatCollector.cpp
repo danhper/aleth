@@ -10,6 +10,8 @@ static thread_local size_t memoryDeallocated = 0;
 #define MAX_SIZE 1000003
 static thread_local intptr_t memoryMapping[MAX_SIZE];
 
+using namespace std::chrono;
+
 void* operator new(std::size_t sz)
 {
     // NOTE: if this overflows we probably have bigger problems
@@ -30,7 +32,8 @@ void operator delete(void* ptr) noexcept
 
 namespace
 {
-const uint64_t microsecondsPerSeconds = 1000000;
+const uint64_t millisecondsPerSeconds = 1000;
+const uint64_t microsecondsPerSeconds = 1000 * millisecondsPerSeconds;
 const uint64_t nanosecondsPerSeconds = 1000 * microsecondsPerSeconds;
 }
 
@@ -53,18 +56,18 @@ static float getClockEllapsedSecs(clock_t start, clock_t stop)
 
 static float getTimespecEllapsedSecs(timespec start, timespec stop)
 {
-    auto startNs = start.tv_nsec * nanosecondsPerSeconds + start.tv_nsec;
-    auto endNs = stop.tv_nsec * nanosecondsPerSeconds + stop.tv_nsec;
+    auto startNs = start.tv_sec * nanosecondsPerSeconds + start.tv_nsec;
+    auto endNs = stop.tv_sec * nanosecondsPerSeconds + stop.tv_nsec;
     auto ellapsed = endNs - startNs;
     return static_cast<double>(ellapsed) / nanosecondsPerSeconds;
 }
-
 
 Json::Value SystemUsageStat::toJson() const
 {
     Json::Value root;
     root["clock_time"] = clockTime;
     root["user_time"] = userTime;
+    root["chrono_time"] = chronoTime;
     root["monotonic_time"] = monotonicTime;
     root["system_time"] = systemTime;
     root["memory_allocated"] = memoryAllocated;
@@ -82,6 +85,7 @@ void SystemUsageStatCollector::reset()
     m_startMemoryAllocated = memoryAllocated;
     m_startMemoryDeallocated = memoryDeallocated;
     m_startClock = clock();
+    m_startChrono = high_resolution_clock::now();
     getrusage(RUSAGE_SELF, &m_startUsage);
 }
 
@@ -93,15 +97,19 @@ SystemUsageStat SystemUsageStatCollector::getSystemStat() const
     timespec endTimespec;
     clock_gettime(CLOCK_MONOTONIC, &endTimespec);
 
+    auto chronoStop = high_resolution_clock::now();
+
     rusage endUsage;
     getrusage(RUSAGE_SELF, &endUsage);
-    return {.clockTime = getClockEllapsedSecs(m_startClock, clock()),
+    return {
+        .clockTime = getClockEllapsedSecs(m_startClock, clock()),
         .userTime = getEllapsedSecs(m_startUsage.ru_utime, endUsage.ru_utime),
         .systemTime = getEllapsedSecs(m_startUsage.ru_stime, endUsage.ru_stime),
         .monotonicTime = getTimespecEllapsedSecs(m_startTimespec, endTimespec),
+        .chronoTime = duration_cast<duration<float>>(chronoStop - m_startChrono).count(),
         .memoryAllocated = totalMemoryAllocated,
-        .extraMemoryAllocated =
-            static_cast<int64_t>(totalMemoryAllocated - totalMemoryDeallocated)};
+        .extraMemoryAllocated = static_cast<int64_t>(totalMemoryAllocated - totalMemoryDeallocated)
+    };
 }
 
 }  // namespace eth
