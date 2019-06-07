@@ -49,49 +49,18 @@ void version()
     exit(AlethErrors::Success);
 }
 
-enum class Mode
-{
-    Trace,
-    Statistics,
-    OutputOnly,
-
-    /// Test mode -- output information needed for test verification and
-    /// benchmarking. The execution is not introspected not to degrade
-    /// performance.
-    Test
-};
-
-
-constexpr const char* c_networkConfigFileName = "network.rlp";
 }
-
-class LastBlockHashes : public eth::LastBlockHashesFace
-{
-public:
-    h256s precedingHashes(h256 const& /* _mostRecentHash */) const override
-    {
-        return h256s(256, h256());
-    }
-    void clear() override {}
-};
 
 int main(int argc, char** argv)
 {
     setDefaultOrCLocale();
     string inputFile;
-    Mode mode = Mode::Statistics;
-    State state(0);
     Address sender = Address(69);
     Address origin = Address(69);
     u256 value = 0;
     u256 gas = maxBlockGasLimit();
     u256 gasPrice = 0;
-    bool styledJson = true;
-    StandardTrace st;
-    Network networkName = Network::MainNetworkTest;
-    BlockHeader blockHeader;  // fake block to be executed in
-    blockHeader.setGasLimit(maxBlockGasLimit());
-    blockHeader.setTimestamp(0);
+    Network networkName = Network::MainNetwork;
     bytes data;
     bytes code;
 
@@ -121,11 +90,6 @@ int main(int argc, char** argv)
     networkOptions.add_options()("network", po::value<string>(),
         "Main|Ropsten|Homestead|Frontier|Byzantium|Constantinople|ConstantinopleFix\n");
 
-    po::options_description optionsForTrace("Options for trace", c_lineWidth);
-    auto addTraceOption = optionsForTrace.add_options();
-    addTraceOption("flat", "Minimal whitespace in the JSON.");
-    addTraceOption("mnemonics", "Show instruction mnemonics in the trace (non-standard).\n");
-
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
         createLoggingProgramOptions(c_lineWidth, loggingOptions));
@@ -136,23 +100,13 @@ int main(int argc, char** argv)
     addGeneralOption("help,h", "Show this help message and exit.");
     addGeneralOption("author", po::value<Address>(), "<a> Set author");
     addGeneralOption("difficulty", po::value<u256>(), "<n> Set difficulty");
-    addGeneralOption("number",
-        po::value<int64_t>()->default_value(0)->value_name("<number>")->notifier([&](int64_t _n) {
-            blockHeader.setNumber(_n);
-        }),
-        "<n> Set number");
-    addGeneralOption("timestamp",
-        po::value<int64_t>()
-            ->default_value(0)
-            ->value_name("<timestamp>")
-            ->notifier([&](int64_t _t) { blockHeader.setTimestamp(_t); }),
-        "<n> Set timestamp");
+    addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
+    addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
 
     po::options_description allowedOptions(
         "Usage ethvm <options> [trace|stats|output|test] (<file>|-)");
     allowedOptions.add(vmProgramOptions(c_lineWidth))
         .add(networkOptions)
-        .add(optionsForTrace)
         .add(loggingProgramOptions)
         .add(generalOptions)
         .add(transactionOptions);
@@ -166,25 +120,6 @@ int main(int argc, char** argv)
 
     setupLogging(loggingOptions);
 
-    // handling mode and input file options separately, as they don't have option name
-    for (auto const& arg : unrecognisedOptions)
-    {
-        if (arg == "stats")
-            mode = Mode::Statistics;
-        else if (arg == "output")
-            mode = Mode::OutputOnly;
-        else if (arg == "trace")
-            mode = Mode::Trace;
-        else if (arg == "test")
-            mode = Mode::Test;
-        else if (inputFile.empty())
-            inputFile = arg;  // Assign input file name only once.
-        else
-        {
-            cerr << "Unknown argument: " << arg << '\n';
-            return AlethErrors::UnknownArgument;
-        }
-    }
     if (vm.count("help"))
     {
         cout << allowedOptions;
@@ -194,26 +129,7 @@ int main(int argc, char** argv)
     {
         version();
     }
-    if (vm.count("mnemonics"))
-        st.setShowMnemonics();
-    if (vm.count("flat"))
-        styledJson = false;
-    if (vm.count("sender"))
-        sender = vm["sender"].as<Address>();
-    if (vm.count("origin"))
-        origin = vm["origin"].as<Address>();
-    if (vm.count("gas"))
-        gas = vm["gas"].as<u256>();
-    if (vm.count("gas-price"))
-        gasPrice = vm["gas-price"].as<u256>();
-    if (vm.count("author"))
-        blockHeader.setAuthor(vm["author"].as<Address>());
-    if (vm.count("difficulty"))
-        blockHeader.setDifficulty(vm["difficulty"].as<u256>());
-    if (vm.count("gas-limit"))
-        blockHeader.setGasLimit((vm["gas-limit"].as<u256>()).convert_to<int64_t>());
-    if (vm.count("value"))
-        value = vm["value"].as<u256>();
+
     if (vm.count("network"))
     {
         string network = vm["network"].as<string>();
@@ -237,6 +153,46 @@ int main(int argc, char** argv)
             return AlethErrors::UnknownNetworkType;
         }
     }
+
+    ChainParams chainParams(genesisInfo(networkName), genesisStateRoot(networkName));
+    std::string snapshotPath;
+    WithExisting withExisting = WithExisting::Trust;
+    InstructionsBenchmark instructionsBenchmark(100);
+    auto analysisEnv = std::make_shared<AnalysisEnv>(std::cout, std::cout, instructionsBenchmark);
+    auto dbPath = db::databasePath();
+
+    BlockChain blockchain(chainParams, dbPath, withExisting,
+                          [](unsigned d, unsigned t) {}, analysisEnv);
+
+    auto stateDB = State::openDB(dbPath, blockchain.genesisHash(), withExisting);
+
+    auto block = blockchain.genesisBlock(stateDB);
+    auto state = block.mutableState();
+    block.sync(blockchain);
+    auto blockHeader = block.info();
+    blockHeader.setGasLimit(maxBlockGasLimit());
+
+
+    if (vm.count("sender"))
+        sender = vm["sender"].as<Address>();
+    if (vm.count("origin"))
+        origin = vm["origin"].as<Address>();
+    if (vm.count("gas"))
+        gas = vm["gas"].as<u256>();
+    if (vm.count("gas-price"))
+        gasPrice = vm["gas-price"].as<u256>();
+    if (vm.count("author"))
+        blockHeader.setAuthor(vm["author"].as<Address>());
+    if (vm.count("difficulty"))
+        blockHeader.setDifficulty(vm["difficulty"].as<u256>());
+    if (vm.count("number"))
+        blockHeader.setNumber(vm["difficulty"].as<int64_t>());
+    if (vm.count("timestamp"))
+        blockHeader.setTimestamp(vm["timestamp"].as<int64_t>());
+    if (vm.count("gas-limit"))
+        blockHeader.setGasLimit((vm["gas-limit"].as<u256>()).convert_to<int64_t>());
+    if (vm.count("value"))
+        value = vm["value"].as<u256>();
     if (vm.count("input"))
         data = fromHex(vm["input"].as<string>());
     if (vm.count("code"))
@@ -266,43 +222,6 @@ int main(int argc, char** argv)
     }
 
 
-    // dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("aleth"), db::databasePath(),
-    //     snapshotPath, chainParams, withExisting, netPrefs, &nodesState, testingMode, analysisEnv);
-
-    // auto netPrefs = p2p::NetworkConfig("localhost", 30333);
-    // netPrefs.discovery = false;
-    // netPrefs.allowLocalDiscovery = false;
-    // netPrefs.pin = "1234";
-
-    // auto nodesState = contents(getDataDir() / fs::path(c_networkConfigFileName));
-    // auto clientVersion = WebThreeDirect::composeClientVersion("aleth");
-    ChainParams chainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
-    // p2p::Host host(clientVersion, netPrefs, &nodesState);
-
-    std::string snapshotPath;
-    WithExisting withExisting = WithExisting::Verify;
-    InstructionsBenchmark instructionsBenchmark(100);
-    auto analysisEnv = std::make_shared<AnalysisEnv>(std::cout, std::cout, instructionsBenchmark);
-    auto dbPath = db::databasePath();
-
-    BlockChain blockchain(chainParams, dbPath, withExisting,
-        [](unsigned d, unsigned t) {
-            std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r";
-        }, analysisEnv);
-
-    auto stateDB = State::openDB(dbPath, blockchain.genesisHash(), withExisting);
-    std::cout << db::isDiskDatabase() << std::endl;
-    std::cout << stateDB.keys().size() << std::endl;
-    // BlockQueue bq;
-    // blockchain.sync(bq, stateDB, 50);
-
-    Block block(blockchain, stateDB, blockchain.currentHash());
-
-    std::cout << block.info().number() << std::endl;
-    // auto client = new eth::Client(chainParams, (int)chainParams.networkID, host,
-    //         shared_ptr<GasPricer>(), db::databasePath(), snapshotPath, withExisting,
-    //         TransactionQueue::Limits{1024, 1024}, analysisEnv);
-
     Transaction t;
     Address contractDestination("1122334455667788991011121314151617181920");
     if (!code.empty())
@@ -322,17 +241,15 @@ int main(int argc, char** argv)
 
     state.addBalance(sender, value);
 
-    unique_ptr<SealEngineFace> se(ChainParams(genesisInfo(networkName)).createSealEngine());
-    LastBlockHashes lastBlockHashes;
-    EnvInfo const envInfo(blockHeader, lastBlockHashes, 0);
+
+    auto se = blockchain.sealEngine();
+    EnvInfo const envInfo(blockHeader, blockchain.lastBlockHashes(), 0);
     Executive executive(state, envInfo, *se);
     ExecutionResult res;
     executive.setResultRecipient(res);
     t.forceSender(sender);
 
     unordered_map<byte, pair<unsigned, bigint>> counts;
-    unsigned total = 0;
-    bigint memTotal;
 
     executive.initialize(t);
     if (!code.empty())
@@ -340,75 +257,17 @@ int main(int argc, char** argv)
     else
         executive.create(sender, value, gasPrice, gas, &data, origin);
 
-    OnOpFunc onOp;
-    if (mode == Mode::Statistics)
-    {
-        onOp = [&](uint64_t, uint64_t, Instruction inst, bigint m, bigint gasCost, bigint,
-                   VMFace const*, ExtVMFace const*) {
-            byte b = static_cast<byte>(inst);
-            counts[b].first++;
-            counts[b].second += gasCost;
-            total++;
-            if (m > memTotal)
-                memTotal = m;
-        };
-    }
-    else if (mode == Mode::Trace)
-        onOp = st.onOp();
-#ifdef ETH_MEASURE_GAS
-    onOp = executive.traceInstructions();
-#endif
+    auto onOp = executive.traceInstructions();
 
-    Timer timer;
     executive.go(onOp);
-    double execTime = timer.elapsed();
     executive.finalize();
-    bytes output = std::move(res.output);
-    executive.outputResults(std::cout);
 
-    if (mode == Mode::Statistics)
-    {
-        cout << "Gas used: " << res.gasUsed << " (+"
-             << t.baseGasRequired(se->evmSchedule(envInfo.number())) << " for transaction, -"
-             << res.gasRefunded << " refunded)\n";
-        cout << "Output: " << toHex(output) << "\n";
-        LogEntries logs = executive.logs();
-        cout << logs.size() << " logs" << (logs.empty() ? "." : ":") << "\n";
-        for (LogEntry const& l : logs)
-        {
-            cout << "  " << l.address.hex() << ": " << toHex(t.data()) << "\n";
-            for (h256 const& topic : l.topics)
-                cout << "    " << topic.hex() << "\n";
-        }
+    auto exception = res.excepted != TransactionException::None;
+    if (exception) {
+        std::cerr << "{\"error\": \"" << res.excepted << "\"}" << std::endl;
+    } else {
+        executive.outputResults(std::cout, true);
+    }
 
-        cout << total << " operations in " << execTime << " seconds.\n";
-        cout << "Maximum memory usage: " << memTotal * 32 << " bytes\n";
-        cout << "Expensive operations:\n";
-        for (auto const inst : {Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL,
-                 Instruction::CREATE, Instruction::CALLCODE, Instruction::DELEGATECALL,
-                 Instruction::MSTORE8, Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3})
-        {
-            auto const& count = counts[static_cast<byte>(inst)];
-            if (count.first != 0)
-                cout << "  " << instructionInfo(inst).name << " x " << count.first << " ("
-                     << count.second << " gas)\n";
-        }
-    }
-    else if (mode == Mode::Trace)
-        cout << (styledJson ? st.styledJson() : st.multilineTrace());
-    else if (mode == Mode::OutputOnly)
-        cout << toHex(output) << '\n';
-    else if (mode == Mode::Test)
-    {
-        // Output information needed for test verification and benchmarking
-        // in YAML-like dictionaly format.
-        auto exception = res.excepted != TransactionException::None;
-        cout << "output: '" << toHex(output) << "'\n";
-        cout << "exception: " << boolalpha << exception << '\n';
-        cout << "gas used: " << res.gasUsed << '\n';
-        cout << "gas/sec: " << scientific << setprecision(3) << uint64_t(res.gasUsed) / execTime
-             << '\n';
-        cout << "exec time: " << fixed << setprecision(6) << execTime << '\n';
-    }
     return AlethErrors::Success;
 }
