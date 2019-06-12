@@ -29,11 +29,34 @@
 using namespace std;
 using namespace dev;
 using namespace eth;
+using namespace boost::accumulators;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
 namespace
 {
+
+struct ExecutionEnv
+{
+    Block block;
+    BlockHeader blockHeader;
+    u256 value;
+    u256 gasPrice;
+    u256 gas;
+    Address sender;
+    Address origin;
+    BlockChain& chain;
+};
+
+struct ExecutionStats
+{
+    u256 gasUsed;
+    float executionTime;
+    bytes output;
+    TransactionException excepted;
+};
+
+
 int64_t maxBlockGasLimit()
 {
     static int64_t limit =
@@ -49,6 +72,50 @@ void version()
     exit(AlethErrors::Success);
 }
 
+
+ExecutionStats executeCode(bytes code, ExecutionEnv execEnv)
+{
+    auto block = execEnv.block;
+    auto state = block.mutableState();
+    auto blockHeader = execEnv.blockHeader;
+    bytes data;
+
+    Transaction t;
+    Address contractDestination("1122334455667788991011121314151617181920");
+    Account account(0, 0);
+    account.setCode(bytes{code});
+    std::unordered_map<Address, Account> map;
+    map[contractDestination] = account;
+    state.populateFrom(map);
+    t = Transaction(execEnv.value, execEnv.gasPrice, execEnv.gas, contractDestination, data, 0);
+
+    state.addBalance(execEnv.sender, execEnv.value);
+
+    auto se = execEnv.chain.sealEngine();
+    EnvInfo const envInfo(blockHeader, execEnv.chain.lastBlockHashes(), 0);
+    Executive executive(state, envInfo, *se);
+    ExecutionResult res;
+    executive.setResultRecipient(res);
+    t.forceSender(execEnv.sender);
+
+    unordered_map<byte, pair<unsigned, bigint>> counts;
+
+    executive.initialize(t);
+    executive.call(contractDestination, execEnv.sender, execEnv.value, execEnv.gasPrice, &data, execEnv.gas);
+
+    auto onOp = executive.traceInstructions();
+
+    executive.go(onOp);
+    executive.finalize();
+
+    return ExecutionStats {
+        .gasUsed = executive.gasUsed(),
+        .executionTime = executive.executionTime(),
+        .output = res.output,
+        .excepted = res.excepted
+    };
+}
+
 }
 
 int main(int argc, char** argv)
@@ -60,6 +127,7 @@ int main(int argc, char** argv)
     u256 gas = maxBlockGasLimit();
     u256 gasPrice = 0;
     Network networkName = Network::MainNetwork;
+    uint64_t execCount = 1;
     bytes data;
 
     Ethash::init();
@@ -100,6 +168,7 @@ int main(int argc, char** argv)
     addGeneralOption("difficulty", po::value<u256>(), "<n> Set difficulty");
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
+    addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
 
     po::options_description allowedOptions(
         "Usage aleth-vm-instr <options> (<file>|-)");
@@ -190,7 +259,12 @@ int main(int argc, char** argv)
         originalBlockHeader.setGasLimit((vm["gas-limit"].as<u256>()).convert_to<int64_t>());
     if (vm.count("value"))
         value = vm["value"].as<u256>();
+    if (vm.count("exec-count"))
+        execCount = vm["exec-count"].as<uint64_t>();
 
+    Json::StreamWriterBuilder builder;
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
     while (true)
     {
@@ -203,47 +277,74 @@ int main(int argc, char** argv)
             break;
         }
 
-        auto block = originalBlock;
-        auto state = originalBlock.mutableState();
-        auto blockHeader = originalBlockHeader;
+        accumulator_set<double, features<tag::sum, tag::mean, tag::variance>> timeMeasurements;
+        u256 gasUsed = 0;
+        bytes output;
+        bool error = false;
 
-        Transaction t;
-        Address contractDestination("1122334455667788991011121314151617181920");
-        Account account(0, 0);
-        account.setCode(bytes{code});
-        std::unordered_map<Address, Account> map;
-        map[contractDestination] = account;
-        state.populateFrom(map);
-        t = Transaction(value, gasPrice, gas, contractDestination, data, 0);
+        for (uint64_t i = 0; i < execCount; i++)
+        {
+            ExecutionEnv execEnv = {
+                .block = originalBlock,
+                .blockHeader = originalBlockHeader,
+                .value = value,
+                .gasPrice = gasPrice,
+                .gas = gas,
+                .sender = sender,
+                .origin = origin,
+                .chain = blockchain
+            };
 
-        state.addBalance(sender, value);
+            auto stats = executeCode(code, execEnv);
+            auto exception = stats.excepted != TransactionException::None;
+            if (exception)
+            {
+                std::cerr << "{\"error\": \"" << stats.excepted << "\"}" << std::endl;
+                error = true;
+                break;
+            }
 
-        auto se = blockchain.sealEngine();
-        EnvInfo const envInfo(blockHeader, blockchain.lastBlockHashes(), 0);
-        Executive executive(state, envInfo, *se);
-        ExecutionResult res;
-        executive.setResultRecipient(res);
-        t.forceSender(sender);
+            if (output.empty())
+            {
+                output = stats.output;
+            }
+            else if (output != stats.output)
+            {
+                std::cerr << "{\"error\": \"obtained different output: '"
+                          << output << "' != '" << stats.output << "'\"}" << std::endl;
+                error = true;
+                break;
+            }
 
-        unordered_map<byte, pair<unsigned, bigint>> counts;
+            if (gasUsed == 0)
+            {
+                gasUsed = stats.gasUsed;
+            }
+            else if (gasUsed != stats.gasUsed)
+            {
 
-        executive.initialize(t);
-        if (!code.empty())
-            executive.call(contractDestination, sender, value, gasPrice, &data, gas);
-        else
-            executive.create(sender, value, gasPrice, gas, &data, origin);
+                std::cerr << "{\"error\": \"obtained different gas used: '"
+                          << gasUsed << "' != '" << stats.gasUsed << "'\"}" << std::endl;
+                error = true;
+                break;
+            }
 
-        auto onOp = executive.traceInstructions();
-
-        executive.go(onOp);
-        executive.finalize();
-
-        auto exception = res.excepted != TransactionException::None;
-        if (exception) {
-            std::cerr << "{\"error\": \"" << res.excepted << "\"}" << std::endl;
-        } else {
-            executive.outputResults(std::cout, true);
+            timeMeasurements(stats.executionTime);
         }
+
+        if (error)
+        {
+            continue;
+        }
+
+        Json::Value root;
+        root["gas"] = gasUsed.convert_to<uint64_t>();
+        double totalTime = sum(timeMeasurements);
+        root["gas_per_second"] = gasUsed.convert_to<double>() / totalTime * execCount;
+        root["time_mean"] = mean(timeMeasurements);
+        root["time_stdev"] = sqrt(variance(timeMeasurements));
+        writer->write(root, &std::cout);
+        std::cout << std::endl;
     }
 
     return AlethErrors::Success;
