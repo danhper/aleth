@@ -201,6 +201,9 @@ public:
     /// Output measurements
     void outputResults(std::ostream& os, bool includeInput = false);
 
+    /// Returns the execution time of the contract
+    float executionTime() const { return m_usageStat.chronoTime; };
+
     /// Operation function to trace changes to the store during gas execution
     OnOpFunc traceInstructions();
 
