@@ -54,7 +54,6 @@ void version()
 int main(int argc, char** argv)
 {
     setDefaultOrCLocale();
-    string inputFile;
     Address sender = Address(69);
     Address origin = Address(69);
     u256 value = 0;
@@ -62,7 +61,6 @@ int main(int argc, char** argv)
     u256 gasPrice = 0;
     Network networkName = Network::MainNetwork;
     bytes data;
-    bytes code;
 
     Ethash::init();
     NoProof::init();
@@ -104,7 +102,7 @@ int main(int argc, char** argv)
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
 
     po::options_description allowedOptions(
-        "Usage ethvm <options> [trace|stats|output|test] (<file>|-)");
+        "Usage aleth-vm-instr <options> (<file>|-)");
     allowedOptions.add(vmProgramOptions(c_lineWidth))
         .add(networkOptions)
         .add(loggingProgramOptions)
@@ -162,15 +160,14 @@ int main(int argc, char** argv)
     auto dbPath = db::databasePath();
 
     BlockChain blockchain(chainParams, dbPath, withExisting,
-                          [](unsigned d, unsigned t) {}, analysisEnv);
+                          [](unsigned, unsigned) {}, analysisEnv);
 
     auto stateDB = State::openDB(dbPath, blockchain.genesisHash(), withExisting);
 
-    auto block = blockchain.genesisBlock(stateDB);
-    auto state = block.mutableState();
-    block.sync(blockchain);
-    auto blockHeader = block.info();
-    blockHeader.setGasLimit(maxBlockGasLimit());
+    auto originalBlock = blockchain.genesisBlock(stateDB);
+    originalBlock.sync(blockchain);
+    auto originalBlockHeader = originalBlock.info();
+    originalBlockHeader.setGasLimit(maxBlockGasLimit());
 
 
     if (vm.count("sender"))
@@ -182,91 +179,71 @@ int main(int argc, char** argv)
     if (vm.count("gas-price"))
         gasPrice = vm["gas-price"].as<u256>();
     if (vm.count("author"))
-        blockHeader.setAuthor(vm["author"].as<Address>());
+        originalBlockHeader.setAuthor(vm["author"].as<Address>());
     if (vm.count("difficulty"))
-        blockHeader.setDifficulty(vm["difficulty"].as<u256>());
+        originalBlockHeader.setDifficulty(vm["difficulty"].as<u256>());
     if (vm.count("number"))
-        blockHeader.setNumber(vm["difficulty"].as<int64_t>());
+        originalBlockHeader.setNumber(vm["difficulty"].as<int64_t>());
     if (vm.count("timestamp"))
-        blockHeader.setTimestamp(vm["timestamp"].as<int64_t>());
+        originalBlockHeader.setTimestamp(vm["timestamp"].as<int64_t>());
     if (vm.count("gas-limit"))
-        blockHeader.setGasLimit((vm["gas-limit"].as<u256>()).convert_to<int64_t>());
+        originalBlockHeader.setGasLimit((vm["gas-limit"].as<u256>()).convert_to<int64_t>());
     if (vm.count("value"))
         value = vm["value"].as<u256>();
-    if (vm.count("input"))
-        data = fromHex(vm["input"].as<string>());
-    if (vm.count("code"))
-        code = fromHex(vm["code"].as<string>());
 
-    // Read code from input file.
-    if (!inputFile.empty())
+
+    while (true)
     {
-        if (!code.empty())
-            cerr << "--code argument overwritten by input file " << inputFile << '\n';
+        std::string rawCode;
+        std::cin >> rawCode;
+        auto code = fromHex(rawCode);
 
-        if (inputFile == "-")
-            for (int i = cin.get(); i != -1; i = cin.get())
-                code.push_back(static_cast<byte>(i));
-        else
-            code = contents(inputFile);
-
-        try  // Try decoding from hex.
+        if (code.empty())
         {
-            std::string strCode{reinterpret_cast<char const*>(code.data()), code.size()};
-            strCode.erase(strCode.find_last_not_of(" \t\n\r") + 1);  // Right trim.
-            code = fromHex(strCode, WhenError::Throw);
+            break;
         }
-        catch (BadHexCharacter const&)
-        {
-        }  // Ignore decoding errors.
-    }
 
+        auto block = originalBlock;
+        auto state = originalBlock.mutableState();
+        auto blockHeader = originalBlockHeader;
 
-    Transaction t;
-    Address contractDestination("1122334455667788991011121314151617181920");
-    if (!code.empty())
-    {
-        // Deploy the code on some fake account to be called later.
+        Transaction t;
+        Address contractDestination("1122334455667788991011121314151617181920");
         Account account(0, 0);
         account.setCode(bytes{code});
         std::unordered_map<Address, Account> map;
         map[contractDestination] = account;
         state.populateFrom(map);
         t = Transaction(value, gasPrice, gas, contractDestination, data, 0);
-    }
-    else
-        // If not code provided construct "create" transaction out of the input
-        // data.
-        t = Transaction(value, gasPrice, gas, data, 0);
 
-    state.addBalance(sender, value);
+        state.addBalance(sender, value);
 
+        auto se = blockchain.sealEngine();
+        EnvInfo const envInfo(blockHeader, blockchain.lastBlockHashes(), 0);
+        Executive executive(state, envInfo, *se);
+        ExecutionResult res;
+        executive.setResultRecipient(res);
+        t.forceSender(sender);
 
-    auto se = blockchain.sealEngine();
-    EnvInfo const envInfo(blockHeader, blockchain.lastBlockHashes(), 0);
-    Executive executive(state, envInfo, *se);
-    ExecutionResult res;
-    executive.setResultRecipient(res);
-    t.forceSender(sender);
+        unordered_map<byte, pair<unsigned, bigint>> counts;
 
-    unordered_map<byte, pair<unsigned, bigint>> counts;
+        executive.initialize(t);
+        if (!code.empty())
+            executive.call(contractDestination, sender, value, gasPrice, &data, gas);
+        else
+            executive.create(sender, value, gasPrice, gas, &data, origin);
 
-    executive.initialize(t);
-    if (!code.empty())
-        executive.call(contractDestination, sender, value, gasPrice, &data, gas);
-    else
-        executive.create(sender, value, gasPrice, gas, &data, origin);
+        auto onOp = executive.traceInstructions();
 
-    auto onOp = executive.traceInstructions();
+        executive.go(onOp);
+        executive.finalize();
 
-    executive.go(onOp);
-    executive.finalize();
-
-    auto exception = res.excepted != TransactionException::None;
-    if (exception) {
-        std::cerr << "{\"error\": \"" << res.excepted << "\"}" << std::endl;
-    } else {
-        executive.outputResults(std::cout, true);
+        auto exception = res.excepted != TransactionException::None;
+        if (exception) {
+            std::cerr << "{\"error\": \"" << res.excepted << "\"}" << std::endl;
+        } else {
+            executive.outputResults(std::cout, true);
+        }
     }
 
     return AlethErrors::Success;
