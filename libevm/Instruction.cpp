@@ -216,13 +216,30 @@ static const std::map<Instruction,  InstructionInfo> c_instructionInfo =
     { Instruction::JUMPC,        { "JUMPC",               1,    0, Tier::Mid } },
     { Instruction::JUMPCI,       { "JUMPCI",              2,    0, Tier::High } },
 }; 
- 
+
+static const std::map<std::string, Instruction> c_instructionNames = []() -> std::map<std::string, Instruction> {
+    std::map<std::string, Instruction> instructionNames;
+    for (auto& kv: c_instructionInfo) {
+        instructionNames[kv.second.name] = kv.first;
+    }
+    return instructionNames;
+}();
+
 InstructionInfo instructionInfo(Instruction _inst)
 {
     auto it = c_instructionInfo.find(_inst);
     if (it != c_instructionInfo.end())
         return it->second;
     return InstructionInfo{{}, 0, 0, Tier::Invalid};
+}
+
+
+Instruction instructionFromName(const std::string& _name)
+{
+    auto it = c_instructionNames.find(_name);
+    if (it != c_instructionNames.end())
+        return it->second;
+    return Instruction::INVALID;
 }
 
 

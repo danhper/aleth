@@ -12,6 +12,11 @@
 #include <libevmanalysis/ExtendedInstruction.h>
 #include <libevm/Instruction.h>
 
+namespace
+{
+    const uint64_t defaultGranularity = 100;
+}
+
 namespace dev
 {
 
@@ -68,6 +73,7 @@ template <typename T>
 class BenchmarkResultsMap
 {
 public:
+    explicit BenchmarkResultsMap() : m_granularity(defaultGranularity) {}
     explicit BenchmarkResultsMap(uint64_t granularity) : m_granularity(granularity) {}
     uint64_t totalCount() const { return m_totalCount; }
 

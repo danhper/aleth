@@ -1,6 +1,7 @@
 add_executable(aleth-vm-instr main.cpp)
 
-target_link_libraries(aleth-vm-instr PRIVATE ethereum evm ethashseal devcore Boost::program_options)
+target_link_libraries(aleth-vm-instr
+  PRIVATE ethereum evm ethashseal devcore evm-gas-exploiter Boost::program_options)
 
 target_include_directories(aleth-vm-instr PRIVATE ../utils)
 
