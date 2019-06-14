@@ -56,6 +56,27 @@ struct ExecutionStats
     TransactionException excepted;
 };
 
+struct ExecutionAggregatedStats
+{
+    uint64_t gas;
+    double totalTime;
+    double gasPerSecond;
+    double timeMean;
+    double timeStdev;
+
+    Json::Value toJson() const;
+};
+
+Json::Value ExecutionAggregatedStats::toJson() const
+{
+    Json::Value root;
+    root["gas"] = gas;
+    root["gas_per_second"] = gasPerSecond;
+    root["time_mean"] = timeMean;
+    root["time_stdev"] = timeStdev;
+    return root;
+}
+
 
 int64_t maxBlockGasLimit()
 {
@@ -115,6 +136,58 @@ ExecutionStats executeCode(bytes code, ExecutionEnv execEnv)
         .excepted = res.excepted
     };
 }
+
+ExecutionAggregatedStats benchmarkCode(ExecutionEnv execEnv, bytes code, uint64_t execCount)
+{
+    accumulator_set<double, features<tag::sum, tag::mean, tag::variance>> timeMeasurements;
+    u256 gasUsed = 0;
+    bytes output;
+
+    for (uint64_t i = 0; i < execCount; i++)
+    {
+        auto stats = executeCode(code, execEnv);
+        auto exception = stats.excepted != TransactionException::None;
+        if (exception)
+        {
+            stringstream ss;
+            ss << "exception: " << stats.excepted;
+            throw runtime_error(ss.str().c_str());
+        }
+
+        if (output.empty())
+        {
+            output = stats.output;
+        }
+        else if (output != stats.output)
+        {
+            throw runtime_error("obtained different output");
+        }
+
+        if (gasUsed == 0)
+        {
+            gasUsed = stats.gasUsed;
+        }
+        else if (gasUsed != stats.gasUsed)
+        {
+            stringstream ss;
+            ss << "obtained different gas used: '" << gasUsed
+               << "' != '" << stats.gasUsed << "'";
+            throw runtime_error(ss.str().c_str());
+        }
+
+        timeMeasurements(stats.executionTime);
+    }
+
+    double totalTime = sum(timeMeasurements);
+    return ExecutionAggregatedStats {
+        .gas = gasUsed.convert_to<uint64_t>(),
+        .totalTime = totalTime,
+        .gasPerSecond = gasUsed.convert_to<double>() / totalTime * execCount,
+        .timeMean = mean(timeMeasurements),
+        .timeStdev = sqrt(variance(timeMeasurements))
+    };
+}
+
 
 }
 
@@ -277,74 +350,25 @@ int main(int argc, char** argv)
             break;
         }
 
-        accumulator_set<double, features<tag::sum, tag::mean, tag::variance>> timeMeasurements;
-        u256 gasUsed = 0;
-        bytes output;
-        bool error = false;
+        ExecutionEnv execEnv = {
+            .block = originalBlock,
+            .blockHeader = originalBlockHeader,
+            .value = value,
+            .gasPrice = gasPrice,
+            .gas = gas,
+            .sender = sender,
+            .origin = origin,
+            .chain = blockchain
+        };
 
-        for (uint64_t i = 0; i < execCount; i++)
-        {
-            ExecutionEnv execEnv = {
-                .block = originalBlock,
-                .blockHeader = originalBlockHeader,
-                .value = value,
-                .gasPrice = gasPrice,
-                .gas = gas,
-                .sender = sender,
-                .origin = origin,
-                .chain = blockchain
-            };
-
-            auto stats = executeCode(code, execEnv);
-            auto exception = stats.excepted != TransactionException::None;
-            if (exception)
-            {
-                std::cerr << "{\"error\": \"" << stats.excepted << "\"}" << std::endl;
-                error = true;
-                break;
-            }
-
-            if (output.empty())
-            {
-                output = stats.output;
-            }
-            else if (output != stats.output)
-            {
-                std::cerr << "{\"error\": \"obtained different output: '"
-                          << output << "' != '" << stats.output << "'\"}" << std::endl;
-                error = true;
-                break;
-            }
-
-            if (gasUsed == 0)
-            {
-                gasUsed = stats.gasUsed;
-            }
-            else if (gasUsed != stats.gasUsed)
-            {
-
-                std::cerr << "{\"error\": \"obtained different gas used: '"
-                          << gasUsed << "' != '" << stats.gasUsed << "'\"}" << std::endl;
-                error = true;
-                break;
-            }
-
-            timeMeasurements(stats.executionTime);
+        try {
+            auto results = benchmarkCode(execEnv, code, execCount);
+            auto json = results.toJson();
+            writer->write(json, &std::cout);
+            std::cout << std::endl;
+        } catch (std::runtime_error& e) {
+            std::cerr << "{\"error\": \"" << e.what() << "\"}" << std::endl;
         }
-
-        if (error)
-        {
-            continue;
-        }
-
-        Json::Value root;
-        root["gas"] = gasUsed.convert_to<uint64_t>();
-        double totalTime = sum(timeMeasurements);
-        root["gas_per_second"] = gasUsed.convert_to<double>() / totalTime * execCount;
-        root["time_mean"] = mean(timeMeasurements);
-        root["time_stdev"] = sqrt(variance(timeMeasurements));
-        writer->write(root, &std::cout);
-        std::cout << std::endl;
     }
 
     return AlethErrors::Success;
