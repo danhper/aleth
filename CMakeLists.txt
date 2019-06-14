@@ -131,6 +131,7 @@ add_subdirectory(libweb3jsonrpc)
 
 if (MEASURE_GAS)
     add_subdirectory(libevmanalysis)
+    add_subdirectory(libevm-gas-exploiter)
 endif()
 
 add_subdirectory(aleth)

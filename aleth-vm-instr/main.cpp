@@ -19,6 +19,9 @@
 
 #include <aleth/buildinfo.h>
 
+#include <libevm-gas-exploiter/ExecutionEnv.h>
+#include <libevm-gas-exploiter/Benchmarker.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 
@@ -29,54 +32,11 @@
 using namespace std;
 using namespace dev;
 using namespace eth;
-using namespace boost::accumulators;
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
 namespace
 {
-
-struct ExecutionEnv
-{
-    Block block;
-    BlockHeader blockHeader;
-    u256 value;
-    u256 gasPrice;
-    u256 gas;
-    Address sender;
-    Address origin;
-    BlockChain& chain;
-};
-
-struct ExecutionStats
-{
-    u256 gasUsed;
-    float executionTime;
-    bytes output;
-    TransactionException excepted;
-};
-
-struct ExecutionAggregatedStats
-{
-    uint64_t gas;
-    double totalTime;
-    double gasPerSecond;
-    double timeMean;
-    double timeStdev;
-
-    Json::Value toJson() const;
-};
-
-Json::Value ExecutionAggregatedStats::toJson() const
-{
-    Json::Value root;
-    root["gas"] = gas;
-    root["gas_per_second"] = gasPerSecond;
-    root["time_mean"] = timeMean;
-    root["time_stdev"] = timeStdev;
-    return root;
-}
-
 
 int64_t maxBlockGasLimit()
 {
@@ -91,101 +51,6 @@ void version()
     cout << "aleth-vm " << buildinfo->project_version << "\n";
     cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
     exit(AlethErrors::Success);
-}
-
-
-ExecutionStats executeCode(bytes code, ExecutionEnv execEnv)
-{
-    auto block = execEnv.block;
-    auto state = block.mutableState();
-    auto blockHeader = execEnv.blockHeader;
-    bytes data;
-
-    Transaction t;
-    Address contractDestination("1122334455667788991011121314151617181920");
-    Account account(0, 0);
-    account.setCode(bytes{code});
-    std::unordered_map<Address, Account> map;
-    map[contractDestination] = account;
-    state.populateFrom(map);
-    t = Transaction(execEnv.value, execEnv.gasPrice, execEnv.gas, contractDestination, data, 0);
-
-    state.addBalance(execEnv.sender, execEnv.value);
-
-    auto se = execEnv.chain.sealEngine();
-    EnvInfo const envInfo(blockHeader, execEnv.chain.lastBlockHashes(), 0);
-    Executive executive(state, envInfo, *se);
-    ExecutionResult res;
-    executive.setResultRecipient(res);
-    t.forceSender(execEnv.sender);
-
-    unordered_map<byte, pair<unsigned, bigint>> counts;
-
-    executive.initialize(t);
-    executive.call(contractDestination, execEnv.sender, execEnv.value, execEnv.gasPrice, &data, execEnv.gas);
-
-    auto onOp = executive.traceInstructions();
-
-    executive.go(onOp);
-    executive.finalize();
-
-    return ExecutionStats {
-        .gasUsed = executive.gasUsed(),
-        .executionTime = executive.executionTime(),
-        .output = res.output,
-        .excepted = res.excepted
-    };
-}
-
-ExecutionAggregatedStats benchmarkCode(ExecutionEnv execEnv, bytes code, uint64_t execCount)
-{
-    accumulator_set<double, features<tag::sum, tag::mean, tag::variance>> timeMeasurements;
-    u256 gasUsed = 0;
-    bytes output;
-
-    for (uint64_t i = 0; i < execCount; i++)
-    {
-        auto stats = executeCode(code, execEnv);
-        auto exception = stats.excepted != TransactionException::None;
-        if (exception)
-        {
-            stringstream ss;
-            ss << "exception: " << stats.excepted;
-            throw runtime_error(ss.str().c_str());
-        }
-
-        if (output.empty())
-        {
-            output = stats.output;
-        }
-        else if (output != stats.output)
-        {
-            throw runtime_error("obtained different output");
-        }
-
-        if (gasUsed == 0)
-        {
-            gasUsed = stats.gasUsed;
-        }
-        else if (gasUsed != stats.gasUsed)
-        {
-            stringstream ss;
-            ss << "obtained different gas used: '" << gasUsed
-               << "' != '" << stats.gasUsed << "'";
-            throw runtime_error(ss.str().c_str());
-        }
-
-        timeMeasurements(stats.executionTime);
-    }
-
-    double totalTime = sum(timeMeasurements);
-    return ExecutionAggregatedStats {
-        .gas = gasUsed.convert_to<uint64_t>(),
-        .totalTime = totalTime,
-        .gasPerSecond = gasUsed.convert_to<double>() / totalTime * execCount,
-        .timeMean = mean(timeMeasurements),
-        .timeStdev = sqrt(variance(timeMeasurements))
-    };
 }
 
 
@@ -295,9 +160,8 @@ int main(int argc, char** argv)
     }
 
     ChainParams chainParams(genesisInfo(networkName), genesisStateRoot(networkName));
-    std::string snapshotPath;
     WithExisting withExisting = WithExisting::Trust;
-    InstructionsBenchmark instructionsBenchmark(100);
+    InstructionsBenchmark instructionsBenchmark;
     auto analysisEnv = std::make_shared<AnalysisEnv>(std::cout, std::cout, instructionsBenchmark);
     auto dbPath = db::databasePath();
 

@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace dev
 {
@@ -264,6 +265,7 @@ struct InstructionMetric
 
 /// Information on all the instructions.
 InstructionInfo instructionInfo(Instruction _inst);
+Instruction instructionFromName(const std::string& name);
 
 }
 }
