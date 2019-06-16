@@ -21,6 +21,8 @@
 
 #include <libevm-gas-exploiter/ExecutionEnv.h>
 #include <libevm-gas-exploiter/Benchmarker.h>
+#include <libevm-gas-exploiter/InstructionMetadata.h>
+#include <libevm-gas-exploiter/ProgramGenerator.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
@@ -67,6 +69,7 @@ int main(int argc, char** argv)
     Network networkName = Network::MainNetwork;
     uint64_t execCount = 1;
     bytes data;
+    std::string metadataPath;
 
     Ethash::init();
     NoProof::init();
@@ -107,6 +110,7 @@ int main(int argc, char** argv)
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
     addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
+    addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
 
     po::options_description allowedOptions(
         "Usage aleth-vm-instr <options> (<file>|-)");
@@ -198,6 +202,19 @@ int main(int argc, char** argv)
         value = vm["value"].as<u256>();
     if (vm.count("exec-count"))
         execCount = vm["exec-count"].as<uint64_t>();
+    if (vm.count("metadata-path"))
+    {
+        metadataPath = vm["metadata-path"].as<std::string>();
+    }
+    else
+    {
+        std::cerr << "please provide the path of the instructions metadata" << std::endl;
+        return AlethErrors::ConfigFileEmptyOrNotFound;
+    }
+
+    auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
+    auto programGenerator = ProgramGenerator(instructionsMetadata);
+    programGenerator.generateInitialProgram();
 
     Json::StreamWriterBuilder builder;
     builder.settings_["indentation"] = "";
