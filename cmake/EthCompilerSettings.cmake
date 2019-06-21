@@ -35,6 +35,9 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
     # Disable warnings about unknown pragmas (which is enabled by -Wall).
     add_compile_options(-Wno-unknown-pragmas)
 
+    # Disable deprecated-copy for now
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>)
+
     # Configuration-specific compiler settings.
     set(CMAKE_CXX_FLAGS_DEBUG          "-Og -g -DETH_DEBUG")
     set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
