@@ -28,12 +28,7 @@ static_assert(alignof(Address) == alignof(evmc_address), "Address types alignmen
 static_assert(sizeof(h256) == sizeof(evmc_uint256be), "Hash types size mismatch");
 static_assert(alignof(h256) == alignof(evmc_uint256be), "Hash types alignment mismatch");
 
-<<<<<<< HEAD
 bool EvmCHost::account_exists(evmc_address const& _addr) noexcept
-=======
-
-bool accountExists(evmc_context* _context, evmc_address const* _addr) noexcept
->>>>>>> WIP: logic to micro bench instructions
 {
     return m_extVM.exists(fromEvmC(_addr));
 }
