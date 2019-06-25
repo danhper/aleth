@@ -214,7 +214,7 @@ int main(int argc, char** argv)
 
     auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
     auto programGenerator = ProgramGenerator(instructionsMetadata);
-    programGenerator.generateInitialProgram();
+    auto program = programGenerator.generateInitialProgram();
 
     Json::StreamWriterBuilder builder;
     builder.settings_["indentation"] = "";
