@@ -9,9 +9,9 @@ using namespace eth;
 TEST(InstructionStats, recordInstruction)
 {
     auto stats = InstructionStats();
-    stats.recordInstruction(Instruction::ADD);
-    stats.recordInstruction(Instruction::ADD);
-    stats.recordInstruction(Instruction::SUB);
+    stats.recordInstruction(fromInstruction(Instruction::ADD));
+    stats.recordInstruction(fromInstruction(Instruction::ADD));
+    stats.recordInstruction(fromInstruction(Instruction::SUB));
     auto json = stats.toJson();
     EXPECT_EQ(json["calls"].size(), 2);
     EXPECT_EQ(json["calls"]["ADD"].asUInt64(), 2);

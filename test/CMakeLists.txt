@@ -3,7 +3,6 @@ set(CTEST_OUTPUT_ON_FAILURE TRUE)
 
 include(GoogleTest)
 
-hunter_add_package(GTest)
 find_package(GTest CONFIG REQUIRED)
 
 set(unittest_sources
@@ -46,7 +45,7 @@ set (evmanalysis_sources
 
 set(private_link_libraries
     web3jsonrpc ethashseal devcrypto devcore 
-    GTest::gtest GTest::main
+    gtest gtest_main
 )
 if (MEASURE_GAS)
     set (unittest_sources ${unittest_sources} ${evmanalysis_sources})
