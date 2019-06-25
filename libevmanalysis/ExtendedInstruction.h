@@ -221,6 +221,7 @@ enum class ExtendedInstruction : uint16_t
 
 std::string instructionName(ExtendedInstruction instruction);
 
+ExtendedInstruction fromInstruction(Instruction instruction);
 ExtendedInstruction fromInstruction(Instruction instruction, u256s stack);
 
 
