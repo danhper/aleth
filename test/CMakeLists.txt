@@ -43,13 +43,20 @@ set (evmanalysis_sources
     unittests/libevmanalysis/StreamWrapper.cpp
 )
 
+set (gasexploiter_sources
+    unittests/libevm-gas-exploiter/Program.cpp
+)
+
+
 set(private_link_libraries
     web3jsonrpc ethashseal devcrypto devcore 
     gtest gtest_main
 )
 if (MEASURE_GAS)
     set (unittest_sources ${unittest_sources} ${evmanalysis_sources})
+    set (unittest_sources ${unittest_sources} ${gasexploiter_sources})
     set (private_link_libraries ${private_link_libraries} evmanalysis)
+    set (private_link_libraries ${private_link_libraries} evm-gas-exploiter)
 endif()
 
 add_executable(aleth-unittests ${unittest_sources})
