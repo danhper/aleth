@@ -473,11 +473,12 @@ OnOpFunc Executive::simpleTrace()
 
 
 #if ETH_MEASURE_GAS
-OnOpFunc Executive::traceInstructions()
+OnOpFunc Executive::traceInstructions(bool debug)
 {
     auto& instructionStats = m_instructionStats;
 
-    return [&instructionStats](uint64_t /* steps */, uint64_t /* PC */, Instruction inst,
+    return [&instructionStats, debug](
+               uint64_t /* steps */, uint64_t /* PC */, Instruction inst,
                bigint /* newMemSize */, bigint /* gasCost */, bigint /* gas */, VMFace const* _vm,
                ExtVMFace const* voidExt) {
         ExtVM const& ext = *dynamic_cast<ExtVM const*>(voidExt);
@@ -487,6 +488,11 @@ OnOpFunc Executive::traceInstructions()
         auto einstruction = fromInstruction(inst, stack);
 
         instructionStats.recordInstruction(einstruction);
+
+        if (debug)
+        {
+            std::cout << instructionInfo(inst).name << std::endl;
+        }
 
         switch (inst)
         {

@@ -61,6 +61,7 @@ void version()
 int main(int argc, char** argv)
 {
     setDefaultOrCLocale();
+    bool debug = false;
     Address sender = Address(69);
     Address origin = Address(69);
     u256 value = 0;
@@ -105,6 +106,7 @@ int main(int argc, char** argv)
     auto addGeneralOption = generalOptions.add_options();
     addGeneralOption("version,v", "Show the version and exit.");
     addGeneralOption("help,h", "Show this help message and exit.");
+    addGeneralOption("debug", "Enables debug mode.");
     addGeneralOption("author", po::value<Address>(), "<a> Set author");
     addGeneralOption("difficulty", po::value<u256>(), "<n> Set difficulty");
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
@@ -137,6 +139,10 @@ int main(int argc, char** argv)
     if (vm.count("version"))
     {
         version();
+    }
+    if (vm.count("debug"))
+    {
+        debug = true;
     }
 
     if (vm.count("network"))
@@ -212,45 +218,50 @@ int main(int argc, char** argv)
         return AlethErrors::ConfigFileEmptyOrNotFound;
     }
 
+    std::cout << gas << std::endl;
     auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
     auto programGenerator = ProgramGenerator(instructionsMetadata);
-    auto program = programGenerator.generateInitialProgram();
+    auto program = programGenerator.generateInitialProgram(100).withStop();
+    std::cout << program.toOpcodes() << std::endl;
 
     Json::StreamWriterBuilder builder;
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-    while (true)
-    {
-        std::string rawCode;
-        std::cin >> rawCode;
-        auto code = fromHex(rawCode);
+    // while (true)
+    // {
+        // std::string rawCode;
+        // std::cin >> rawCode;
+        // auto code = fromHex(rawCode);
 
-        if (code.empty())
-        {
-            break;
-        }
+        // if (code.empty())
+        // {
+        //     break;
+        // }
 
-        ExecutionEnv execEnv = {
-            .block = originalBlock,
-            .blockHeader = originalBlockHeader,
-            .value = value,
-            .gasPrice = gasPrice,
-            .gas = gas,
-            .sender = sender,
-            .origin = origin,
-            .chain = blockchain
-        };
+    auto code = program.toBytes();
 
-        try {
-            auto results = benchmarkCode(execEnv, code, execCount);
-            auto json = results.toJson();
-            writer->write(json, &std::cout);
-            std::cout << std::endl;
-        } catch (std::runtime_error& e) {
-            std::cerr << "{\"error\": \"" << e.what() << "\"}" << std::endl;
-        }
+    ExecutionEnv execEnv = {
+        .block = originalBlock,
+        .blockHeader = originalBlockHeader,
+        .value = value,
+        .gasPrice = gasPrice,
+        .gas = gas,
+        .sender = sender,
+        .origin = origin,
+        .chain = blockchain
+    };
+
+    try {
+        auto results = benchmarkCode(execEnv, code, execCount, debug);
+        auto json = results.toJson();
+        writer->write(json, &std::cout);
+        std::cout << std::endl;
+    } catch (std::runtime_error& e) {
+        std::cerr << "{\"error\": \"" << e.what() << "\"}" << std::endl;
     }
+
+    // }
 
     return AlethErrors::Success;
 }
