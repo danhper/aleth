@@ -22,7 +22,7 @@
 #include <libevm-gas-exploiter/ExecutionEnv.h>
 #include <libevm-gas-exploiter/Benchmarker.h>
 #include <libevm-gas-exploiter/InstructionMetadata.h>
-#include <libevm-gas-exploiter/ProgramGenerator.h>
+#include <libevm-gas-exploiter/ProgramGeneratorFactory.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
@@ -218,9 +218,8 @@ int main(int argc, char** argv)
         return AlethErrors::ConfigFileEmptyOrNotFound;
     }
 
-    std::cout << gas << std::endl;
     auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
-    auto programGenerator = ProgramGenerator(instructionsMetadata);
+    auto programGenerator = programgenerator::createWithAllHooks(instructionsMetadata);
     auto program = programGenerator.generateInitialProgram(100).withStop();
     std::cout << program.toOpcodes() << std::endl;
 
