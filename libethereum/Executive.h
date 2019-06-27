@@ -205,7 +205,7 @@ public:
     float executionTime() const { return m_usageStat.chronoTime; };
 
     /// Operation function to trace changes to the store during gas execution
-    OnOpFunc traceInstructions();
+    OnOpFunc traceInstructions(bool debug = false);
 
     /// Operations function to benchmark instructions
     OnOpFunc benchmarkInstructionsOp();
