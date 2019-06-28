@@ -220,7 +220,7 @@ int main(int argc, char** argv)
 
     auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
     auto programGenerator = programgenerator::createWithAllHooks(instructionsMetadata);
-    auto program = programGenerator.generateInitialProgram(100).withStop();
+    auto program = programGenerator.generateInitialProgram(100);
     std::cout << program.toOpcodes() << std::endl;
 
     Json::StreamWriterBuilder builder;
