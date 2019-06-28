@@ -62,6 +62,7 @@ int main(int argc, char** argv)
 {
     setDefaultOrCLocale();
     bool debug = false;
+    unsigned int seed = 0;
     Address sender = Address(69);
     Address origin = Address(69);
     u256 value = 0;
@@ -107,6 +108,7 @@ int main(int argc, char** argv)
     addGeneralOption("version,v", "Show the version and exit.");
     addGeneralOption("help,h", "Show this help message and exit.");
     addGeneralOption("debug", "Enables debug mode.");
+    addGeneralOption("seed", po::value<unsigned int>(), "<s> Set random seed");
     addGeneralOption("author", po::value<Address>(), "<a> Set author");
     addGeneralOption("difficulty", po::value<u256>(), "<n> Set difficulty");
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
@@ -143,6 +145,10 @@ int main(int argc, char** argv)
     if (vm.count("debug"))
     {
         debug = true;
+    }
+    if (vm.count("seed"))
+    {
+        seed = vm["seed"].as<unsigned int>();
     }
 
     if (vm.count("network"))
@@ -219,7 +225,7 @@ int main(int argc, char** argv)
     }
 
     auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
-    auto programGenerator = programgenerator::createWithAllHooks(instructionsMetadata);
+    auto programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
     auto program = programGenerator.generateInitialProgram(100);
     std::cout << program.toOpcodes() << std::endl;
 

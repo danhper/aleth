@@ -454,7 +454,7 @@ OnOpFunc Executive::traceInstructions(bool debug)
 
     return [&instructionStats, debug](
                uint64_t /* steps */, uint64_t /* PC */, Instruction inst,
-               bigint /* newMemSize */, bigint /* gasCost */, bigint /* gas */, VMFace const* _vm,
+               bigint /* newMemSize */, bigint /* gasCost */, bigint gas, VMFace const* _vm,
                ExtVMFace const* voidExt) {
         ExtVM const& ext = *dynamic_cast<ExtVM const*>(voidExt);
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
@@ -466,7 +466,7 @@ OnOpFunc Executive::traceInstructions(bool debug)
 
         if (debug)
         {
-            std::cout << instructionInfo(inst).name << std::endl;
+            std::cout << instructionInfo(inst).name << "(gas left = " << gas << ")" << std::endl;
         }
 
         switch (inst)
