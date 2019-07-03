@@ -181,13 +181,13 @@ int main(int argc, char** argv)
     auto analysisEnv = std::make_shared<AnalysisEnv>(std::cout, std::cout, instructionsBenchmark);
     auto dbPath = db::databasePath();
 
-    BlockChain blockchain(chainParams, dbPath, withExisting,
-                          [](unsigned, unsigned) {}, analysisEnv);
+    auto blockchain = std::make_shared<BlockChain>(
+        chainParams, dbPath, withExisting, [](unsigned, unsigned) {}, analysisEnv);
 
-    auto stateDB = State::openDB(dbPath, blockchain.genesisHash(), withExisting);
+    auto stateDB = State::openDB(dbPath, blockchain->genesisHash(), withExisting);
 
-    auto originalBlock = blockchain.genesisBlock(stateDB);
-    originalBlock.sync(blockchain);
+    auto originalBlock = blockchain->genesisBlock(stateDB);
+    originalBlock.sync(*blockchain);
     auto originalBlockHeader = originalBlock.info();
     originalBlockHeader.setGasLimit(maxBlockGasLimit());
 
@@ -226,7 +226,7 @@ int main(int argc, char** argv)
 
     auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
     auto programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
-    auto program = programGenerator.generateInitialProgram(100);
+    auto program = programGenerator->generateInitialProgram(100);
     std::cout << program.toOpcodes() << std::endl;
 
     Json::StreamWriterBuilder builder;
