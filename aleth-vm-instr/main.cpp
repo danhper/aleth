@@ -23,6 +23,7 @@
 #include <libevm-gas-exploiter/Benchmarker.h>
 #include <libevm-gas-exploiter/InstructionMetadata.h>
 #include <libevm-gas-exploiter/ProgramGeneratorFactory.h>
+#include <libevm-gas-exploiter/GeneticEngine.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
@@ -73,6 +74,13 @@ int main(int argc, char** argv)
     bytes data;
     std::string metadataPath;
 
+    uint32_t populationSize = 1000;
+    uint32_t programSize = 1000;
+    uint32_t generationsCount = 10000;
+    double eliteRatio = 0.2;
+    double tournamentSelectionProb = 0.4;
+    double tournamentSelectionRatio = 0.2;
+
     Ethash::init();
     NoProof::init();
 
@@ -116,12 +124,24 @@ int main(int argc, char** argv)
     addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
 
+
+    po::options_description gaOptions("Genetic algorithm options", c_lineWidth);
+    auto addGaOption = gaOptions.add_options();
+    addGaOption("population-size", po::value<uint64_t>(), "<n> Set population size");
+    addGaOption("program-size", po::value<uint64_t>(), "<n> Set initial program size");
+    addGaOption("generations-count", po::value<uint64_t>(), "<n> Set numbers of generation to run");
+    addGaOption("elite-ratio", po::value<double>(), "<x> Set the ratio of elite to keep across generations");
+    addGaOption("tournament-selection-p", po::value<double>(), "<x> Set probability of picking first for tournament selection");
+    addGaOption("tournament-selection-ratio", po::value<double>(), "<x> Set the ratio of samples to use for tournament selection");
+
+
     po::options_description allowedOptions(
         "Usage aleth-vm-instr <options> (<file>|-)");
     allowedOptions.add(vmProgramOptions(c_lineWidth))
         .add(networkOptions)
         .add(loggingProgramOptions)
         .add(generalOptions)
+        .add(gaOptions)
         .add(transactionOptions);
     po::parsed_options parsed =
         po::command_line_parser(argc, argv).options(allowedOptions).allow_unregistered().run();
@@ -224,27 +244,21 @@ int main(int argc, char** argv)
         return AlethErrors::ConfigFileEmptyOrNotFound;
     }
 
+    if (vm.count("population-size"))
+        populationSize = vm["population-size"].as<uint32_t>();
+    if (vm.count("program-size"))
+        programSize = vm["program-size"].as<uint32_t>();
+    if (vm.count("generations-count"))
+        generationsCount = vm["generations-count"].as<uint32_t>();
+    if (vm.count("elite-ratio"))
+        eliteRatio = vm["elite-ratio"].as<double>();
+    if (vm.count("tournament-selection-p"))
+        tournamentSelectionProb = vm["tournament-selection-p"].as<double>();
+    if (vm.count("tournament-selection-ratio"))
+        tournamentSelectionRatio = vm["tournament-selection-ratio"].as<double>();
+
+
     auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
-    auto programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
-    auto program = programGenerator->generateInitialProgram(100);
-    std::cout << program.toOpcodes() << std::endl;
-
-    Json::StreamWriterBuilder builder;
-    builder.settings_["indentation"] = "";
-    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-
-    // while (true)
-    // {
-        // std::string rawCode;
-        // std::cin >> rawCode;
-        // auto code = fromHex(rawCode);
-
-        // if (code.empty())
-        // {
-        //     break;
-        // }
-
-    auto code = program.toBytes();
 
     ExecutionEnv execEnv = {
         .block = originalBlock,
@@ -257,16 +271,26 @@ int main(int argc, char** argv)
         .chain = blockchain
     };
 
-    try {
-        auto results = benchmarkCode(execEnv, code, execCount, debug);
-        auto json = results.toJson();
-        writer->write(json, &std::cout);
-        std::cout << std::endl;
-    } catch (std::runtime_error& e) {
-        std::cerr << "{\"error\": \"" << e.what() << "\"}" << std::endl;
-    }
+    GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
+    GeneticEngine::Config config{
+        .populationSize = populationSize,
+        .initialProgramSize = programSize,
+        .generationsCount = generationsCount,
+        .eliteRatio = eliteRatio,
+        .debug = debug,
+        .benchmarkExecCount = execCount,
+        .tournamentSelectionConfig = tournamentConfig,
+        .execEnv = execEnv,
+        .seed = seed,
+    };
 
-    // }
+    std::shared_ptr<ProgramGenerator> programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
+
+    auto stream = std::shared_ptr<std::ostream>(&std::cout);
+
+    GeneticEngine geneticEngine(config, programGenerator, stream);
+
+    geneticEngine.run();
 
     return AlethErrors::Success;
 }
