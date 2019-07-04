@@ -136,10 +136,11 @@ int main(int argc, char** argv)
 
     po::options_description gaOptions("Genetic algorithm options", c_lineWidth);
     auto addGaOption = gaOptions.add_options();
-    addGaOption("population-size", po::value<uint64_t>(), "<n> Set population size");
-    addGaOption("program-size", po::value<uint64_t>(), "<n> Set initial program size");
-    addGaOption("generations-count", po::value<uint64_t>(), "<n> Set numbers of generation to run");
-    addGaOption("elite-ratio", po::value<double>(), "<x> Set the ratio of elite to keep across generations");
+    addGaOption("population-size", po::value<uint32_t>(), "<n> Set population size");
+    addGaOption("init-program-size", po::value<uint32_t>(), "<n> Set initial program size");
+    addGaOption("min-program-size", po::value<uint32_t>(), "<n> Set minimum program size");
+    addGaOption("generations-count", po::value<uint32_t>(), "<n> Set numbers of generation to run");
+    addGaOption("elite-ratio", po::value<uint32_t>(), "<x> Set the ratio of elite to keep across generations");
     addGaOption("tournament-selection-p", po::value<double>(), "<x> Set probability of picking first for tournament selection");
     addGaOption("tournament-selection-ratio", po::value<double>(), "<x> Set the ratio of samples to use for tournament selection");
 
@@ -306,9 +307,10 @@ int main(int argc, char** argv)
     auto outputStreamWrapper = StreamWrapper(outputPath);
 
     GeneticEngine geneticEngine(config, programGenerator, statStreamWrapper.getStream());
+    std::cerr << "Running for " << config.generationsCount << " generations" << std::endl;
     geneticEngine.run();
 
-    geneticEngine.outputBest(outputCount, statStreamWrapper.getStream());
+    geneticEngine.outputBest(outputCount, outputStreamWrapper.getStream());
 
     return AlethErrors::Success;
 }
