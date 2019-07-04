@@ -80,8 +80,8 @@ int main(int argc, char** argv)
     uint64_t outputCount = 10;
 
     uint32_t populationSize = 1000;
-    uint32_t initialProgramSize = 1000;
-    uint32_t minimumProgramSize = 100;
+    uint32_t initialProgramSize = 10000;
+    uint32_t minimumProgramSize = 1000;
     uint32_t generationsCount = 1000;
     double eliteRatio = 0.2;
     double tournamentSelectionProb = 0.4;
