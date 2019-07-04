@@ -19,11 +19,12 @@
 
 #include <aleth/buildinfo.h>
 
-#include <libevm-gas-exploiter/ExecutionEnv.h>
 #include <libevm-gas-exploiter/Benchmarker.h>
+#include <libevm-gas-exploiter/ExecutionEnv.h>
+#include <libevm-gas-exploiter/GeneticEngine.h>
 #include <libevm-gas-exploiter/InstructionMetadata.h>
 #include <libevm-gas-exploiter/ProgramGeneratorFactory.h>
-#include <libevm-gas-exploiter/GeneticEngine.h>
+#include <libevmanalysis/StreamWrapper.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
@@ -74,9 +75,14 @@ int main(int argc, char** argv)
     bytes data;
     std::string metadataPath;
 
+    std::string statsPath("-");
+    std::string outputPath("-");
+    uint64_t outputCount = 10;
+
     uint32_t populationSize = 1000;
-    uint32_t programSize = 1000;
-    uint32_t generationsCount = 10000;
+    uint32_t initialProgramSize = 1000;
+    uint32_t minimumProgramSize = 100;
+    uint32_t generationsCount = 1000;
     double eliteRatio = 0.2;
     double tournamentSelectionProb = 0.4;
     double tournamentSelectionRatio = 0.2;
@@ -122,8 +128,11 @@ int main(int argc, char** argv)
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
     addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
+    addGeneralOption("output-count", po::value<uint64_t>(), "<n> Set number of programs to output");
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
-
+    addGeneralOption("stats-path", po::value<std::string>(), "<p> Set the path to save stats");
+    addGeneralOption(
+        "output-path", po::value<std::string>(), "<p> Set the path to save best programs");
 
     po::options_description gaOptions("Genetic algorithm options", c_lineWidth);
     auto addGaOption = gaOptions.add_options();
@@ -234,10 +243,14 @@ int main(int argc, char** argv)
         value = vm["value"].as<u256>();
     if (vm.count("exec-count"))
         execCount = vm["exec-count"].as<uint64_t>();
+    if (vm.count("output-count"))
+        outputCount = vm["output-count"].as<uint64_t>();
     if (vm.count("metadata-path"))
-    {
         metadataPath = vm["metadata-path"].as<std::string>();
-    }
+    if (vm.count("stats-path"))
+        statsPath = vm["stats-path"].as<std::string>();
+    if (vm.count("output-path"))
+        outputPath = vm["output-path"].as<std::string>();
     else
     {
         std::cerr << "please provide the path of the instructions metadata" << std::endl;
@@ -246,8 +259,10 @@ int main(int argc, char** argv)
 
     if (vm.count("population-size"))
         populationSize = vm["population-size"].as<uint32_t>();
-    if (vm.count("program-size"))
-        programSize = vm["program-size"].as<uint32_t>();
+    if (vm.count("init-program-size"))
+        initialProgramSize = vm["init-program-size"].as<uint32_t>();
+    if (vm.count("min-program-size"))
+        minimumProgramSize = vm["min-program-size"].as<uint32_t>();
     if (vm.count("generations-count"))
         generationsCount = vm["generations-count"].as<uint32_t>();
     if (vm.count("elite-ratio"))
@@ -274,7 +289,8 @@ int main(int argc, char** argv)
     GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
     GeneticEngine::Config config{
         .populationSize = populationSize,
-        .initialProgramSize = programSize,
+        .initialProgramSize = initialProgramSize,
+        .minimumProgramSize = minimumProgramSize,
         .generationsCount = generationsCount,
         .eliteRatio = eliteRatio,
         .debug = debug,
@@ -286,11 +302,13 @@ int main(int argc, char** argv)
 
     std::shared_ptr<ProgramGenerator> programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
 
-    auto stream = std::shared_ptr<std::ostream>(&std::cout);
+    auto statStreamWrapper = StreamWrapper(statsPath);
+    auto outputStreamWrapper = StreamWrapper(outputPath);
 
-    GeneticEngine geneticEngine(config, programGenerator, stream);
-
+    GeneticEngine geneticEngine(config, programGenerator, statStreamWrapper.getStream());
     geneticEngine.run();
+
+    geneticEngine.outputBest(outputCount, statStreamWrapper.getStream());
 
     return AlethErrors::Success;
 }
