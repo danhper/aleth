@@ -274,7 +274,11 @@ int main(int argc, char** argv)
         tournamentSelectionRatio = vm["tournament-selection-ratio"].as<double>();
 
 
-    auto instructionsMetadata = parseInstructionsFromFile(metadataPath);
+    std::map<Instruction, InstructionMetadata> instructionsMetadata;
+    if (!metadataPath.empty())
+    {
+        instructionsMetadata = parseInstructionsFromFile(metadataPath);
+    }
 
     ExecutionEnv execEnv = {
         .block = originalBlock,
