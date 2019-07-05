@@ -32,6 +32,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <csignal>
 
 using namespace std;
 using namespace dev;
@@ -252,11 +253,6 @@ int main(int argc, char** argv)
         statsPath = vm["stats-path"].as<std::string>();
     if (vm.count("output-path"))
         outputPath = vm["output-path"].as<std::string>();
-    else
-    {
-        std::cerr << "please provide the path of the instructions metadata" << std::endl;
-        return AlethErrors::ConfigFileEmptyOrNotFound;
-    }
 
     if (vm.count("population-size"))
         populationSize = vm["population-size"].as<uint32_t>();
@@ -308,12 +304,12 @@ int main(int argc, char** argv)
     std::shared_ptr<ProgramGenerator> programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
 
     auto statStreamWrapper = StreamWrapper(statsPath);
-    auto outputStreamWrapper = StreamWrapper(outputPath);
 
     GeneticEngine geneticEngine(config, programGenerator, statStreamWrapper.getStream());
     std::cerr << "Running for " << config.generationsCount << " generations" << std::endl;
     geneticEngine.run();
 
+    auto outputStreamWrapper = StreamWrapper(outputPath);
     geneticEngine.outputBest(outputCount, outputStreamWrapper.getStream());
 
     return AlethErrors::Success;
