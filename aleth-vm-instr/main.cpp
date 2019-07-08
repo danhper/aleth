@@ -43,6 +43,12 @@ namespace fs = boost::filesystem;
 namespace
 {
 
+enum class Mode
+{
+    Benchmark,
+    Search
+};
+
 int64_t maxBlockGasLimit()
 {
     static int64_t limit =
@@ -75,6 +81,8 @@ int main(int argc, char** argv)
     uint64_t execCount = 1;
     bytes data;
     std::string metadataPath;
+    std::string code;
+    Mode mode = Mode::Benchmark;
 
     std::string statsPath("-");
     std::string outputPath("-");
@@ -124,6 +132,7 @@ int main(int argc, char** argv)
     addGeneralOption("help,h", "Show this help message and exit.");
     addGeneralOption("debug", "Enables debug mode.");
     addGeneralOption("seed", po::value<unsigned int>(), "<s> Set random seed");
+    addGeneralOption("mode", po::value<std::string>(), "<m> Mode to use (benchmark or search)");
     addGeneralOption("author", po::value<Address>(), "<a> Set author");
     addGeneralOption("difficulty", po::value<u256>(), "<n> Set difficulty");
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
@@ -180,6 +189,19 @@ int main(int argc, char** argv)
     if (vm.count("seed"))
     {
         seed = vm["seed"].as<unsigned int>();
+    }
+    if (vm.count("mode"))
+    {
+        string modeName = vm["mode"].as<string>();
+        if (modeName == "benchmark" )
+            mode = Mode::Benchmark;
+        else if (modeName == "search")
+            mode = Mode::Search;
+        else
+        {
+            std::cerr << "mode should be 'benchmark' or 'search', got '" << modeName << "'" << std::endl;
+            return AlethErrors::UnknownArgument;
+        }
     }
 
     if (vm.count("network"))
@@ -269,13 +291,6 @@ int main(int argc, char** argv)
     if (vm.count("tournament-selection-ratio"))
         tournamentSelectionRatio = vm["tournament-selection-ratio"].as<double>();
 
-
-    std::map<Instruction, InstructionMetadata> instructionsMetadata;
-    if (!metadataPath.empty())
-    {
-        instructionsMetadata = parseInstructionsFromFile(metadataPath);
-    }
-
     ExecutionEnv execEnv = {
         .block = originalBlock,
         .blockHeader = originalBlockHeader,
@@ -287,30 +302,59 @@ int main(int argc, char** argv)
         .chain = blockchain
     };
 
-    GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
-    GeneticEngine::Config config{
-        .populationSize = populationSize,
-        .initialProgramSize = initialProgramSize,
-        .minimumProgramSize = minimumProgramSize,
-        .generationsCount = generationsCount,
-        .eliteRatio = eliteRatio,
-        .debug = debug,
-        .benchmarkExecCount = execCount,
-        .tournamentSelectionConfig = tournamentConfig,
-        .execEnv = execEnv,
-        .seed = seed,
-    };
+    if (mode == Mode::Benchmark)
+    {
+        if (code.empty() || code == "-")
+        {
+            std::cin >> code;
+        }
+        if (code.empty())
+        {
+            std::cerr << "you must provide code to benchmark" << std::endl;
+            return AlethErrors::ArgumentProcessingFailure;
 
-    std::shared_ptr<ProgramGenerator> programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
+        }
+        auto codeBytes = fromHex(code, WhenError::Throw);
+        auto results = benchmarkCode(execEnv, codeBytes, execCount, debug);
+        auto jsonResults = results.toJson();
+        jsonResults["block_number"] = originalBlockHeader.number();
 
-    auto statStreamWrapper = StreamWrapper(statsPath);
+        auto outputStreamWrapper = StreamWrapper(outputPath);
+        outputStreamWrapper.getStream() << jsonResults;
+    }
+    else if (mode == Mode::Search)
+    {
+        std::map<Instruction, InstructionMetadata> instructionsMetadata;
+        if (!metadataPath.empty())
+        {
+            instructionsMetadata = parseInstructionsFromFile(metadataPath);
+        }
 
-    GeneticEngine geneticEngine(config, programGenerator, statStreamWrapper.getStream());
-    std::cerr << "Running for " << config.generationsCount << " generations" << std::endl;
-    geneticEngine.run();
+        GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
+        GeneticEngine::Config config{
+            .populationSize = populationSize,
+            .initialProgramSize = initialProgramSize,
+            .minimumProgramSize = minimumProgramSize,
+            .generationsCount = generationsCount,
+            .eliteRatio = eliteRatio,
+            .debug = debug,
+            .benchmarkExecCount = execCount,
+            .tournamentSelectionConfig = tournamentConfig,
+            .execEnv = execEnv,
+            .seed = seed,
+        };
 
-    auto outputStreamWrapper = StreamWrapper(outputPath);
-    geneticEngine.outputBest(outputCount, outputStreamWrapper.getStream());
+        std::shared_ptr<ProgramGenerator> programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
+
+        auto statStreamWrapper = StreamWrapper(statsPath);
+
+        GeneticEngine geneticEngine(config, programGenerator, statStreamWrapper.getStream());
+        std::cerr << "Running for " << config.generationsCount << " generations" << std::endl;
+        geneticEngine.run();
+
+        auto outputStreamWrapper = StreamWrapper(outputPath);
+        geneticEngine.outputBest(outputCount, outputStreamWrapper.getStream());
+    }
 
     return AlethErrors::Success;
 }
