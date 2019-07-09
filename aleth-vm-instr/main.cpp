@@ -114,7 +114,6 @@ int main(int argc, char** argv)
         "<a> Transaction sender should be <a> (default: 0000...0069).");
     addTransactionOption("origin", po::value<Address>(),
         "<a> Transaction origin should be <a> (default: 0000...0069).");
-    addTransactionOption("input", po::value<string>(), "<d> Transaction code should be <d>");
     addTransactionOption("code", po::value<string>(),
         "<d> Contract code <d>. Makes transaction a call to this contract");
 
@@ -265,6 +264,8 @@ int main(int argc, char** argv)
         originalBlockHeader.setGasLimit((vm["gas-limit"].as<u256>()).convert_to<int64_t>());
     if (vm.count("value"))
         value = vm["value"].as<u256>();
+    if (vm.count("code"))
+        code = vm["code"].as<std::string>();
     if (vm.count("exec-count"))
         execCount = vm["exec-count"].as<uint64_t>();
     if (vm.count("output-count"))
