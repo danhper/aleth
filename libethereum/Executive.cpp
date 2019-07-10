@@ -564,7 +564,7 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
                uint64_t /* PC */, Instruction inst, bigint /* newMemSize */, bigint /* gasCost */,
                bigint /* gas */, VMFace const* _vm, ExtVMFace const* /* voidExt */) {
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
-        auto stack = vm->stack();
+        const auto& stack = vm->stack();
 
         if (benchmarking && clock_gettime(CLOCK_MONOTONIC, &end) == 0)
         {
