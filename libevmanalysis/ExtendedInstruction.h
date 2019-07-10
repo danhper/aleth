@@ -222,7 +222,7 @@ enum class ExtendedInstruction : uint16_t
 std::string instructionName(ExtendedInstruction instruction);
 
 ExtendedInstruction fromInstruction(Instruction instruction);
-ExtendedInstruction fromInstruction(Instruction instruction, u256s stack);
+ExtendedInstruction fromInstruction(Instruction instruction, const u256s& stack);
 
 
 }  // namespace eth
