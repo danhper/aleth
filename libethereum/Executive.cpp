@@ -483,7 +483,7 @@ OnOpFunc Executive::traceInstructions(bool debug)
                ExtVMFace const* voidExt) {
         ExtVM const& ext = *dynamic_cast<ExtVM const*>(voidExt);
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
-        auto stack = vm->stack();
+        const auto& stack = vm->stack();
 
         auto einstruction = fromInstruction(inst, stack);
 

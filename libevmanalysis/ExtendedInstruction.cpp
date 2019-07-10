@@ -27,7 +27,7 @@ ExtendedInstruction fromInstruction(Instruction instruction)
 }
 
 
-ExtendedInstruction fromInstruction(Instruction instruction, u256s stack)
+ExtendedInstruction fromInstruction(Instruction instruction, const u256s& stack)
 {
     if (instruction == Instruction::CALL && stack.size() >= 2 && stack[1] <= 3)
     {
