@@ -83,7 +83,6 @@ int main(int argc, char** argv)
     std::string metadataPath;
     std::string code;
     Mode mode = Mode::Benchmark;
-
     std::string statsPath("-");
     std::string outputPath("-");
     uint64_t outputCount = 10;
@@ -154,12 +153,15 @@ int main(int argc, char** argv)
     addGaOption("tournament-selection-ratio", po::value<double>(), "<x> Set the ratio of samples to use for tournament selection");
 
 
+    po::options_description dbOptions = db::databaseProgramOptions(c_lineWidth);
+
     po::options_description allowedOptions(
         "Usage aleth-vm-instr <options> (<file>|-)");
     allowedOptions.add(vmProgramOptions(c_lineWidth))
         .add(networkOptions)
         .add(loggingProgramOptions)
         .add(generalOptions)
+        .add(dbOptions)
         .add(gaOptions)
         .add(transactionOptions);
     po::parsed_options parsed =
