@@ -23,7 +23,6 @@
 #include <libevm-gas-exploiter/ExecutionEnv.h>
 #include <libevm-gas-exploiter/GeneticEngine.h>
 #include <libevm-gas-exploiter/InstructionMetadata.h>
-#include <libevm-gas-exploiter/ProgramGeneratorFactory.h>
 #include <libevmanalysis/StreamWrapper.h>
 
 #include <boost/algorithm/string.hpp>
@@ -347,7 +346,7 @@ int main(int argc, char** argv)
             .seed = seed,
         };
 
-        std::shared_ptr<ProgramGenerator> programGenerator = programgenerator::createWithAllHooks(instructionsMetadata, seed);
+        auto programGenerator = std::make_shared<ProgramGenerator>(instructionsMetadata, seed);
 
         auto statStreamWrapper = StreamWrapper(statsPath);
 
