@@ -46,7 +46,7 @@ set (evmanalysis_sources
 set (gasexploiter_sources
     unittests/libevm-gas-exploiter/Program.cpp
     unittests/libevm-gas-exploiter/ProgramGenerator.cpp
-    unittests/libevm-gas-exploiter/ProgramGeneratorHooks.cpp
+    unittests/libevm-gas-exploiter/InstructionGenerator.cpp
     unittests/libevm-gas-exploiter/GeneticEngine.cpp
     unittests/libevm-gas-exploiter/Utils.cpp
 )
