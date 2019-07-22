@@ -90,7 +90,8 @@ int main(int argc, char** argv)
     uint32_t initialProgramSize = 10000;
     uint32_t minimumProgramSize = 1000;
     uint32_t generationsCount = 1000;
-    double eliteRatio = 0.2;
+    uint32_t mutationsCount = 5;
+    double eliteRatio = 0.1;
     double tournamentSelectionProb = 0.4;
     double tournamentSelectionRatio = 0.2;
 
@@ -286,6 +287,8 @@ int main(int argc, char** argv)
         minimumProgramSize = vm["min-program-size"].as<uint32_t>();
     if (vm.count("generations-count"))
         generationsCount = vm["generations-count"].as<uint32_t>();
+    if (vm.count("mutations-count"))
+        mutationsCount = vm["mutations-count"].as<uint32_t>();
     if (vm.count("elite-ratio"))
         eliteRatio = vm["elite-ratio"].as<double>();
     if (vm.count("tournament-selection-p"))
@@ -338,6 +341,7 @@ int main(int argc, char** argv)
             .initialProgramSize = initialProgramSize,
             .minimumProgramSize = minimumProgramSize,
             .generationsCount = generationsCount,
+            .mutationsCount = mutationsCount,
             .eliteRatio = eliteRatio,
             .debug = debug,
             .benchmarkExecCount = execCount,
