@@ -32,6 +32,7 @@
 #include <fstream>
 #include <iostream>
 #include <csignal>
+#include <unistd.h>
 
 using namespace std;
 using namespace dev;
@@ -45,7 +46,8 @@ namespace
 enum class Mode
 {
     Benchmark,
-    Search
+    Search,
+    BenchmarkCache,
 };
 
 int64_t maxBlockGasLimit()
@@ -130,7 +132,7 @@ int main(int argc, char** argv)
     addGeneralOption("help,h", "Show this help message and exit.");
     addGeneralOption("debug", "Enables debug mode.");
     addGeneralOption("seed", po::value<unsigned int>(), "<s> Set random seed");
-    addGeneralOption("mode", po::value<std::string>(), "<m> Mode to use (benchmark or search)");
+    addGeneralOption("mode", po::value<std::string>(), "<m> Mode to use (benchmark, search, benchmark-cache)");
     addGeneralOption("author", po::value<Address>(), "<a> Set author");
     addGeneralOption("difficulty", po::value<u256>(), "<n> Set difficulty");
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
@@ -199,6 +201,8 @@ int main(int argc, char** argv)
             mode = Mode::Benchmark;
         else if (modeName == "search")
             mode = Mode::Search;
+        else if (modeName == "benchmark-cache")
+            mode = Mode::BenchmarkCache;
         else
         {
             std::cerr << "mode should be 'benchmark' or 'search', got '" << modeName << "'" << std::endl;
@@ -361,6 +365,37 @@ int main(int argc, char** argv)
 
         auto outputStreamWrapper = StreamWrapper(outputPath);
         geneticEngine.outputBest(outputCount, outputStreamWrapper.getStream());
+    }
+    else if (mode == Mode::BenchmarkCache)
+    {
+        if (getuid() != 0)
+        {
+            throw std::runtime_error("must be root to benchmark cache");
+        }
+
+        auto programGenerator = std::make_shared<ProgramGenerator>(seed);
+        std::vector<Program> programs;
+        for (size_t i = 0; i < populationSize; i++)
+        {
+            programs.push_back(programGenerator->generateInitialProgram(initialProgramSize));
+        }
+
+        auto outputStreamWrapper = StreamWrapper(outputPath);
+        auto& ostream = outputStreamWrapper.getStream();
+        Json::StreamWriterBuilder builder;
+        builder.settings_["indentation"] = "";
+        std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+
+        for (const auto& program : programs)
+        {
+            auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug);
+            auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug, true);
+            Json::Value result;
+            result["with_cache"] = resultsWithCache.toJson();
+            result["without_cache"] = resultsWithoutCache.toJson();
+            writer->write(result, &ostream);
+            ostream << std::endl;
+        }
     }
 
     return AlethErrors::Success;
