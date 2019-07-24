@@ -382,6 +382,11 @@ int main(int argc, char** argv)
 
         for (size_t i = 0; i < populationSize; i++)
         {
+            if (i % 10 == 0)
+            {
+                std::cout << "progress: " << i << "/" << populationSize << std::endl;
+            }
+
             auto program = programGenerator->generateInitialProgram(initialProgramSize);
             auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug);
             auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug, true);
@@ -390,10 +395,6 @@ int main(int argc, char** argv)
             result["without_cache"] = resultsWithoutCache.toJson();
             writer->write(result, &ostream);
             ostream << std::endl;
-            if (i % 10 == 0)
-            {
-                std::cout << "progress: " << i << "/" << populationSize << std::endl;
-            }
         }
     }
 
