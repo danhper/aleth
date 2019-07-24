@@ -374,20 +374,15 @@ int main(int argc, char** argv)
         }
 
         auto programGenerator = std::make_shared<ProgramGenerator>(seed);
-        std::vector<Program> programs;
-        for (size_t i = 0; i < populationSize; i++)
-        {
-            programs.push_back(programGenerator->generateInitialProgram(initialProgramSize));
-        }
-
         auto outputStreamWrapper = StreamWrapper(outputPath);
         auto& ostream = outputStreamWrapper.getStream();
         Json::StreamWriterBuilder builder;
         builder.settings_["indentation"] = "";
         std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
-        for (const auto& program : programs)
+        for (size_t i = 0; i < populationSize; i++)
         {
+            auto program = programGenerator->generateInitialProgram(initialProgramSize);
             auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug);
             auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug, true);
             Json::Value result;
@@ -395,6 +390,10 @@ int main(int argc, char** argv)
             result["without_cache"] = resultsWithoutCache.toJson();
             writer->write(result, &ostream);
             ostream << std::endl;
+            if (i % 10 == 0)
+            {
+                std::cout << "progress: " << i << "/" << populationSize << std::endl;
+            }
         }
     }
 
