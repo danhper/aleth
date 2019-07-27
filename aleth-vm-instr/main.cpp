@@ -87,6 +87,7 @@ int main(int argc, char** argv)
     std::string statsPath("-");
     std::string outputPath("-");
     uint64_t outputCount = 10;
+    bool warmup = true;
 
     uint32_t populationSize = 1000;
     uint32_t initialProgramSize = 10000;
@@ -138,6 +139,7 @@ int main(int argc, char** argv)
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
     addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
+    addGeneralOption("no-warmup", "Do not warmup before execution");
     addGeneralOption("output-count", po::value<uint64_t>(), "<n> Set number of programs to output");
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
     addGeneralOption("stats-path", po::value<std::string>(), "<p> Set the path to save stats");
@@ -284,6 +286,8 @@ int main(int argc, char** argv)
     if (vm.count("output-path"))
         outputPath = vm["output-path"].as<std::string>();
 
+    if (vm.count("no-warmup"))
+        warmup = false;
     if (vm.count("population-size"))
         populationSize = vm["population-size"].as<uint32_t>();
     if (vm.count("init-program-size"))
@@ -325,7 +329,8 @@ int main(int argc, char** argv)
 
         }
         auto codeBytes = fromHex(code, WhenError::Throw);
-        auto results = benchmarkCode(execEnv, codeBytes, execCount, debug);
+        BenchmarkConfig benchmarkConfig(execCount, debug, warmup);
+        auto results = benchmarkCode(execEnv, codeBytes, benchmarkConfig);
         auto jsonResults = results.toJson();
         jsonResults["block_number"] = originalBlockHeader.number();
 
@@ -341,6 +346,7 @@ int main(int argc, char** argv)
         }
 
         GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
+        BenchmarkConfig benchmarkConfig(execCount, debug, warmup);
         GeneticEngine::Config config{
             .populationSize = populationSize,
             .initialProgramSize = initialProgramSize,
@@ -349,10 +355,10 @@ int main(int argc, char** argv)
             .mutationsCount = mutationsCount,
             .eliteRatio = eliteRatio,
             .debug = debug,
-            .benchmarkExecCount = execCount,
             .tournamentSelectionConfig = tournamentConfig,
             .execEnv = execEnv,
             .seed = seed,
+            .benchmarkConfig = benchmarkConfig,
         };
 
         auto programGenerator = std::make_shared<ProgramGenerator>(instructionsMetadata, seed);
@@ -387,9 +393,11 @@ int main(int argc, char** argv)
                 std::cout << "progress: " << i << "/" << populationSize << std::endl;
             }
 
+            auto withCacheConfig = BenchmarkConfig(execCount, debug, warmup, false);
+            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, warmup, true);
             auto program = programGenerator->generateInitialProgram(initialProgramSize);
-            auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug);
-            auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug, true);
+            auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), withCacheConfig);
+            auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), withoutCacheConfig);
             Json::Value result;
             result["code"] = program.toHex();
             result["with_cache"] = resultsWithCache.toJson();
