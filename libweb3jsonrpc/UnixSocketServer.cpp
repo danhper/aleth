@@ -82,10 +82,15 @@ bool UnixDomainSocketServer::StartListening()
 #ifdef __APPLE__
 		m_address.sun_len = m_path.size() + 1;
 #endif
-		#pragma GCC diagnostic push
-		#pragma GCC diagnostic ignored "-Wstringop-truncation"
+
+#if GCC_VERSION >= 9
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
 		strncpy(m_address.sun_path, m_path.c_str(), c_socketPathMaxLength);
-		#pragma GCC diagnostic pop
+#if GCC_VERSION >= 9
+#pragma GCC diagnostic pop
+#endif
 		::bind(m_socket, reinterpret_cast<sockaddr*>(&m_address), sizeof(sockaddr_un));
 		fs::permissions(m_path, fs::owner_read | fs::owner_write);
 		listen(m_socket, 128);
