@@ -391,6 +391,7 @@ int main(int argc, char** argv)
             auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug);
             auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), execCount, debug, true);
             Json::Value result;
+            result["code"] = program.toHex();
             result["with_cache"] = resultsWithCache.toJson();
             result["without_cache"] = resultsWithoutCache.toJson();
             writer->write(result, &ostream);
