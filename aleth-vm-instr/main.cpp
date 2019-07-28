@@ -66,6 +66,15 @@ void version()
 }
 
 
+void requireRoot(const std::string& message)
+{
+    if (getuid() != 0)
+    {
+        throw std::runtime_error(message);
+    }
+}
+
+
 }
 
 int main(int argc, char** argv)
@@ -88,6 +97,7 @@ int main(int argc, char** argv)
     std::string outputPath("-");
     uint64_t outputCount = 10;
     bool warmup = true;
+    bool dropCaches = false;
 
     uint32_t populationSize = 1000;
     uint32_t initialProgramSize = 10000;
@@ -140,6 +150,7 @@ int main(int argc, char** argv)
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
     addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
     addGeneralOption("no-warmup", "Do not warmup before execution");
+    addGeneralOption("drop-caches", "Always drop caches before starting benchmark");
     addGeneralOption("output-count", po::value<uint64_t>(), "<n> Set number of programs to output");
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
     addGeneralOption("stats-path", po::value<std::string>(), "<p> Set the path to save stats");
@@ -288,6 +299,11 @@ int main(int argc, char** argv)
 
     if (vm.count("no-warmup"))
         warmup = false;
+    if (vm.count("drop-caches"))
+    {
+        requireRoot("must be root to drop caches");
+        dropCaches = true;
+    }
     if (vm.count("population-size"))
         populationSize = vm["population-size"].as<uint32_t>();
     if (vm.count("init-program-size"))
@@ -329,7 +345,7 @@ int main(int argc, char** argv)
 
         }
         auto codeBytes = fromHex(code, WhenError::Throw);
-        BenchmarkConfig benchmarkConfig(execCount, debug, warmup);
+        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCaches);
         auto results = benchmarkCode(execEnv, codeBytes, benchmarkConfig);
         auto jsonResults = results.toJson();
         jsonResults["block_number"] = originalBlockHeader.number();
@@ -346,7 +362,7 @@ int main(int argc, char** argv)
         }
 
         GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
-        BenchmarkConfig benchmarkConfig(execCount, debug, warmup);
+        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCaches);
         GeneticEngine::Config config{
             .populationSize = populationSize,
             .initialProgramSize = initialProgramSize,
@@ -374,10 +390,7 @@ int main(int argc, char** argv)
     }
     else if (mode == Mode::BenchmarkCache)
     {
-        if (getuid() != 0)
-        {
-            throw std::runtime_error("must be root to benchmark cache");
-        }
+        requireRoot("must be root to benchmark cache");
 
         auto programGenerator = std::make_shared<ProgramGenerator>(seed);
         auto outputStreamWrapper = StreamWrapper(outputPath);
@@ -393,8 +406,8 @@ int main(int argc, char** argv)
                 std::cout << "progress: " << i << "/" << populationSize << std::endl;
             }
 
-            auto withCacheConfig = BenchmarkConfig(execCount, debug, warmup, false);
-            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, warmup, true);
+            auto withCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCaches, false);
+            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCaches, true);
             auto program = programGenerator->generateInitialProgram(initialProgramSize);
             auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), withCacheConfig);
             auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), withoutCacheConfig);
