@@ -406,8 +406,8 @@ int main(int argc, char** argv)
                 std::cout << "progress: " << i << "/" << populationSize << std::endl;
             }
 
-            auto withCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCaches, false);
-            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCaches, true);
+            auto withCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCaches, false, true);
+            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCaches, true, true);
             auto program = programGenerator->generateInitialProgram(initialProgramSize);
             auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), withCacheConfig);
             auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), withoutCacheConfig);
