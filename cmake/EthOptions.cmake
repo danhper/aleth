@@ -14,6 +14,7 @@ macro(configure_project)
     option(FASTCTEST "Enable fast ctest" OFF)
     option(ROCKSDB "Build with rocksdb as optional database implementation" OFF)
     option(MEASURE_GAS "Allows to measure gas" OFF)
+    option(MEASURE_MEMORY "Measures memory when measuring gas" OFF)
 
     if(MINIUPNPC)
         message(WARNING
@@ -41,6 +42,10 @@ macro(configure_project)
 
     if (MEASURE_GAS)
         add_definitions(-DETH_MEASURE_GAS)
+    endif ()
+
+    if (MEASURE_MEMORY)
+        add_definitions(-DETH_MEASURE_MEMORY)
     endif ()
 
     # CI Builds should provide (for user builds this is totally optional)
