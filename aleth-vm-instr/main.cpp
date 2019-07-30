@@ -107,6 +107,7 @@ int main(int argc, char** argv)
     double eliteRatio = 0.1;
     double tournamentSelectionProb = 0.4;
     double tournamentSelectionRatio = 0.2;
+    GeneticEngine::Metric targetMetric = GeneticEngine::Metric::Mean;
 
     Ethash::init();
     NoProof::init();
@@ -167,6 +168,7 @@ int main(int argc, char** argv)
     addGaOption("elite-ratio", po::value<double>(), "<x> Set the ratio of elite to keep across generations");
     addGaOption("tournament-selection-p", po::value<double>(), "<x> Set probability of picking first for tournament selection");
     addGaOption("tournament-selection-ratio", po::value<double>(), "<x> Set the ratio of samples to use for tournament selection");
+    addGaOption("target-metric", po::value<std::string>(), "<m> Metric to optimize when performing the search ('mean' or 'median')");
 
 
     po::options_description dbOptions = db::databaseProgramOptions(c_lineWidth);
@@ -320,6 +322,19 @@ int main(int argc, char** argv)
         tournamentSelectionProb = vm["tournament-selection-p"].as<double>();
     if (vm.count("tournament-selection-ratio"))
         tournamentSelectionRatio = vm["tournament-selection-ratio"].as<double>();
+    if (vm.count("target-metric"))
+    {
+        std::string targetMetricName = vm["target-metric"].as<std::string>();
+        if (targetMetricName == "mean" )
+            targetMetric = GeneticEngine::Metric::Mean;
+        if (targetMetricName == "median" )
+            targetMetric = GeneticEngine::Metric::Median;
+        else
+        {
+            std::cerr << "target-metric should be 'mean' or 'median', got '" << targetMetricName << "'" << std::endl;
+            return AlethErrors::UnknownArgument;
+        }
+    }
 
     ExecutionEnv execEnv = {
         .block = originalBlock,
@@ -374,6 +389,7 @@ int main(int argc, char** argv)
             .tournamentSelectionConfig = tournamentConfig,
             .execEnv = execEnv,
             .seed = seed,
+            .targetMetric = targetMetric,
             .benchmarkConfig = benchmarkConfig,
         };
 
