@@ -12,6 +12,7 @@ static thread_local intptr_t memoryMapping[MAX_SIZE];
 
 using namespace std::chrono;
 
+#ifdef ETH_MEASURE_MEMORY
 void* operator new(std::size_t sz)
 {
     // NOTE: if this overflows we probably have bigger problems
@@ -29,6 +30,7 @@ void operator delete(void* ptr) noexcept
     memoryMapping[key] = 0;
     std::free(ptr);
 }
+#endif
 
 namespace
 {
