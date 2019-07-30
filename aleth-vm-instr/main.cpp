@@ -104,6 +104,7 @@ int main(int argc, char** argv)
     uint32_t minimumProgramSize = 1000;
     uint32_t generationsCount = 1000;
     uint32_t mutationsCount = 5;
+    bool cacheResults = false;
     double eliteRatio = 0.1;
     double tournamentSelectionProb = 0.4;
     double tournamentSelectionRatio = 0.2;
@@ -163,6 +164,7 @@ int main(int argc, char** argv)
     addGaOption("population-size", po::value<uint32_t>(), "<n> Set population size");
     addGaOption("init-program-size", po::value<uint32_t>(), "<n> Set initial program size");
     addGaOption("min-program-size", po::value<uint32_t>(), "<n> Set minimum program size");
+    addGaOption("cache-results", "Cache the results");
     addGaOption("generations-count", po::value<uint32_t>(), "<n> Set numbers of generation to run");
     addGaOption("mutations-count", po::value<uint32_t>(), "<n> Set numbers of mutations per sample");
     addGaOption("elite-ratio", po::value<double>(), "<x> Set the ratio of elite to keep across generations");
@@ -316,6 +318,8 @@ int main(int argc, char** argv)
         generationsCount = vm["generations-count"].as<uint32_t>();
     if (vm.count("mutations-count"))
         mutationsCount = vm["mutations-count"].as<uint32_t>();
+    if (vm.count("cache-results"))
+        cacheResults = true;
     if (vm.count("elite-ratio"))
         eliteRatio = vm["elite-ratio"].as<double>();
     if (vm.count("tournament-selection-p"))
@@ -386,6 +390,7 @@ int main(int argc, char** argv)
             .mutationsCount = mutationsCount,
             .eliteRatio = eliteRatio,
             .debug = debug,
+            .cacheResults = cacheResults,
             .tournamentSelectionConfig = tournamentConfig,
             .execEnv = execEnv,
             .seed = seed,
