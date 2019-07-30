@@ -7,12 +7,14 @@
 static thread_local size_t memoryAllocated = 0;
 static thread_local size_t memoryDeallocated = 0;
 
-#define MAX_SIZE 1000003
-static thread_local intptr_t memoryMapping[MAX_SIZE];
 
 using namespace std::chrono;
 
 #ifdef ETH_MEASURE_MEMORY
+
+#define MAX_SIZE 1000003
+static thread_local intptr_t memoryMapping[MAX_SIZE];
+
 void* operator new(std::size_t sz)
 {
     // NOTE: if this overflows we probably have bigger problems
