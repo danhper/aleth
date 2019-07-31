@@ -93,9 +93,7 @@ int main(int argc, char** argv)
     std::string metadataPath;
     std::string code;
     Mode mode = Mode::Benchmark;
-    std::string statsPath("-");
     std::string outputPath("-");
-    uint64_t outputCount = 10;
     bool warmup = true;
     bool dropCache = false;
     bool alwaysDropCache = false;
@@ -155,11 +153,8 @@ int main(int argc, char** argv)
     addGeneralOption("no-warmup", "Do not warmup before execution");
     addGeneralOption("drop-cache", "Drop caches before starting benchmark");
     addGeneralOption("always-drop-cache", "Drop caches before each benchmark execution");
-    addGeneralOption("output-count", po::value<uint64_t>(), "<n> Set number of programs to output");
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
-    addGeneralOption("stats-path", po::value<std::string>(), "<p> Set the path to save stats");
-    addGeneralOption(
-        "output-path", po::value<std::string>(), "<p> Set the path to save best programs");
+    addGeneralOption("output-path", po::value<std::string>(), "<p> Set the path to save results");
 
     po::options_description gaOptions("Genetic algorithm options", c_lineWidth);
     auto addGaOption = gaOptions.add_options();
@@ -294,12 +289,8 @@ int main(int argc, char** argv)
         code = vm["code"].as<std::string>();
     if (vm.count("exec-count"))
         execCount = vm["exec-count"].as<uint64_t>();
-    if (vm.count("output-count"))
-        outputCount = vm["output-count"].as<uint64_t>();
     if (vm.count("metadata-path"))
         metadataPath = vm["metadata-path"].as<std::string>();
-    if (vm.count("stats-path"))
-        statsPath = vm["stats-path"].as<std::string>();
     if (vm.count("output-path"))
         outputPath = vm["output-path"].as<std::string>();
 
@@ -407,14 +398,11 @@ int main(int argc, char** argv)
 
         auto programGenerator = std::make_shared<ProgramGenerator>(instructionsMetadata, seed);
 
-        auto statStreamWrapper = StreamWrapper(statsPath);
+        auto statStreamWrapper = StreamWrapper(outputPath);
 
         GeneticEngine geneticEngine(config, programGenerator, statStreamWrapper.getStream());
         std::cerr << "Running for " << config.generationsCount << " generations" << std::endl;
         geneticEngine.run();
-
-        auto outputStreamWrapper = StreamWrapper(outputPath);
-        geneticEngine.outputBest(outputCount, outputStreamWrapper.getStream());
     }
     else if (mode == Mode::BenchmarkCache)
     {

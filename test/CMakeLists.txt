@@ -42,7 +42,6 @@ set (evmanalysis_sources
 )
 
 set (gasexploiter_sources
-    unittests/libevm-gas-exploiter/Benchmarker.cpp
     unittests/libevm-gas-exploiter/Program.cpp
     unittests/libevm-gas-exploiter/ProgramGenerator.cpp
     unittests/libevm-gas-exploiter/InstructionGenerator.cpp
