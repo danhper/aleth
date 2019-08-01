@@ -3,7 +3,7 @@ set(sources
     InstructionStats.h InstructionStats.cpp
     BenchmarkResults.h BenchmarkResults.cpp
     AnalysisEnv.h AnalysisEnv.cpp
-    StreamWrapper.h StreamWrapper.cpp
+    StreamWrapper.h
     ExtendedInstruction.h ExtendedInstruction.cpp
 )
 

@@ -19,7 +19,7 @@ void testFile(char* filename, int suffixLength)
     {
         auto fd = mkstemps(filename, suffixLength);
         ASSERT_NE(fd, 0);
-        auto sw = StreamWrapper(filename);
+        auto sw = OStreamWrapper(filename);
         for (size_t i = 0; i < 100; i++)
         {
             sw.getStream() << "hello" << i << std::endl;
