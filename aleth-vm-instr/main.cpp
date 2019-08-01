@@ -155,7 +155,7 @@ int main(int argc, char** argv)
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
     addGeneralOption("output-path", po::value<std::string>(), "<p> Set the path to save results");
     addGeneralOption("programs-path", po::value<std::string>(), "<p> Set the path of the programs to benchmark");
-    addGeneralOption("program-index", po::value<uint64_t>(), "<p> The index (line number) of the programs to benchmark");
+    addGeneralOption("programs-index", po::value<uint64_t>(), "<p> The index (line number) of the programs to benchmark");
 
     po::options_description gaOptions("Genetic algorithm options", c_lineWidth);
     auto addGaOption = gaOptions.add_options();
