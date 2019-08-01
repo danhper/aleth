@@ -370,15 +370,6 @@ int main(int argc, char** argv)
             return AlethErrors::ArgumentProcessingFailure;
         }
 
-        std::string gzipExt = ".gz";
-        bool isGzip = programsPath.compare(programsPath.size() - gzipExt.size(), gzipExt.size(), gzipExt) == 0;
-
-        auto flags = ios_base::in;
-        if (isGzip)
-        {
-            flags |= ios_base::binary;
-        }
-
         auto inWrapper = IStreamWrapper(programsPath);
         auto& inputStream = inWrapper.getStream();
 
