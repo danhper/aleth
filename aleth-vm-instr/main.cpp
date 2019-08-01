@@ -338,7 +338,7 @@ int main(int argc, char** argv)
         std::string targetMetricName = vm["target-metric"].as<std::string>();
         if (targetMetricName == "mean" )
             targetMetric = GeneticEngine::Metric::Mean;
-        if (targetMetricName == "median" )
+        else if (targetMetricName == "median" )
             targetMetric = GeneticEngine::Metric::Median;
         else
         {
