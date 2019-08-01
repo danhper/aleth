@@ -94,7 +94,8 @@ int main(int argc, char** argv)
     Mode mode = Mode::Benchmark;
     std::string outputPath("-");
     std::string programsPath;
-    uint64_t programsIndex = 0;
+    uint64_t startIndex = 0;
+    uint64_t endIndex = 0;
     bool warmup = true;
     bool dropCache = false;
     bool alwaysDropCache = false;
@@ -155,7 +156,8 @@ int main(int argc, char** argv)
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
     addGeneralOption("output-path", po::value<std::string>(), "<p> Set the path to save results");
     addGeneralOption("programs-path", po::value<std::string>(), "<p> Set the path of the programs to benchmark");
-    addGeneralOption("programs-index", po::value<uint64_t>(), "<p> The index (line number) of the programs to benchmark");
+    addGeneralOption("start-index", po::value<uint64_t>(), "<p> The first index (line number) of the programs to benchmark");
+    addGeneralOption("end-index", po::value<uint64_t>(), "<p> The last index (line number) of the programs to benchmark");
 
     po::options_description gaOptions("Genetic algorithm options", c_lineWidth);
     auto addGaOption = gaOptions.add_options();
@@ -288,8 +290,12 @@ int main(int argc, char** argv)
         value = vm["value"].as<u256>();
     if (vm.count("exec-count"))
         execCount = vm["exec-count"].as<uint64_t>();
-    if (vm.count("programs-index"))
-        programsIndex = vm["programs-index"].as<uint64_t>();
+    if (vm.count("start-index"))
+        startIndex = vm["start-index"].as<uint64_t>();
+    if (vm.count("end-index"))
+        endIndex = vm["end-index"].as<uint64_t>();
+    else
+        endIndex = startIndex;
     if (vm.count("programs-path"))
         programsPath = vm["programs-path"].as<std::string>();
     if (vm.count("metadata-path"))
@@ -352,6 +358,10 @@ int main(int argc, char** argv)
         .chain = blockchain
     };
 
+    Json::StreamWriterBuilder builder;
+    builder.settings_["indentation"] = "";
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
+
     if (mode == Mode::Benchmark)
     {
         if (programsPath.empty())
@@ -373,50 +383,63 @@ int main(int argc, char** argv)
         auto& inputStream = inWrapper.getStream();
 
         std::string line;
-        for (uint64_t i = 0; std::getline(inputStream, line) && i < programsIndex; i++);
+        for (uint64_t i = 0; i < startIndex && std::getline(inputStream, line); i++);
 
-        if (line.empty())
+        std::vector<std::vector<bytes>> blocks;
+
+        for (uint64_t i = startIndex; i <= endIndex; i++)
         {
-            std::cerr << "line number " << programsIndex << " not found in " << programsPath << std::endl;
-            return AlethErrors::ArgumentProcessingFailure;
-        }
+            std::getline(inputStream, line);
 
-        Json::Value root;
-        Json::Reader reader;
-        if (!reader.parse(line, root))
-        {
-            std::cerr << "could not parse JSON" << std::endl;
-            return AlethErrors::ArgumentProcessingFailure;
-        }
-
-        if (!(root.isMember("programs") && root["programs"].isArray()))
-        {
-            std::cerr << "JSON not formatted correctly, should contain 'programs' key" << std::endl;
-            return AlethErrors::ArgumentProcessingFailure;
-        }
-
-        auto& jsonPrograms = root["programs"];
-
-        std::vector<bytes> programs;
-        for (Json::Value::ArrayIndex i = 0; i != jsonPrograms.size(); i++)
-        {
-            auto& jsonProgram = jsonPrograms[i];
-            if (!(jsonProgram.isMember("program") && jsonProgram["program"].isMember("code")))
+            if (line.empty())
             {
-                std::cerr << "JSON not formatted correctly, should contain 'programs[n].program.code' key" << std::endl;
+                std::cerr << "line number " << i << " not found in " << programsPath << std::endl;
                 return AlethErrors::ArgumentProcessingFailure;
             }
-            auto codeHex = jsonProgram["program"]["code"].asString();
-            programs.push_back(fromHex(codeHex));
+
+            Json::Value root;
+            Json::Reader reader;
+            if (!reader.parse(line, root))
+            {
+                std::cerr << "could not parse JSON" << std::endl;
+                return AlethErrors::ArgumentProcessingFailure;
+            }
+
+            if (!(root.isMember("programs") && root["programs"].isArray()))
+            {
+                std::cerr << "JSON not formatted correctly, should contain 'programs' key" << std::endl;
+                return AlethErrors::ArgumentProcessingFailure;
+            }
+
+            auto& jsonPrograms = root["programs"];
+
+            std::vector<bytes> programs;
+            for (Json::Value::ArrayIndex i = 0; i != jsonPrograms.size(); i++)
+            {
+                auto& jsonProgram = jsonPrograms[i];
+                if (!(jsonProgram.isMember("program") && jsonProgram["program"].isMember("code")))
+                {
+                    std::cerr << "JSON not formatted correctly, should contain 'programs[n].program.code' key" << std::endl;
+                    return AlethErrors::ArgumentProcessingFailure;
+                }
+                auto codeHex = jsonProgram["program"]["code"].asString();
+                programs.push_back(fromHex(codeHex));
+            }
+
+            blocks.push_back(programs);
         }
 
-        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCache, alwaysDropCache);
-        auto results = benchmarkCodes(execEnv, programs, benchmarkConfig);
-        auto jsonResults = results.toJson(true);
-        jsonResults["blockNumber"] = originalBlockHeader.number();
-
         auto outputStreamWrapper = OStreamWrapper(outputPath, std::ios_base::trunc);
-        outputStreamWrapper.getStream() << jsonResults;
+        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCache, alwaysDropCache);
+        auto blockNumber = originalBlockHeader.number();
+        for (auto& programs : blocks)
+        {
+            auto results = benchmarkCodes(execEnv, programs, benchmarkConfig);
+            auto jsonResults = results.toJson(true);
+            jsonResults["blockNumber"] = blockNumber;
+            writer->write(jsonResults, &outputStreamWrapper.getStream());
+            outputStreamWrapper.getStream() << std::endl;
+        }
     }
     else if (mode == Mode::Search)
     {
@@ -459,9 +482,6 @@ int main(int argc, char** argv)
         auto programGenerator = std::make_shared<ProgramGenerator>(seed);
         auto outputStreamWrapper = OStreamWrapper(outputPath);
         auto& ostream = outputStreamWrapper.getStream();
-        Json::StreamWriterBuilder builder;
-        builder.settings_["indentation"] = "";
-        std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
         for (size_t i = 0; i < populationSize; i++)
         {
