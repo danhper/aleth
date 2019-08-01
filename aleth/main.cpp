@@ -802,8 +802,8 @@ int main(int argc, char** argv)
         chainParams.allowFutureBlocks = true;
 
 #ifdef ETH_MEASURE_GAS
-    auto statStreamWrapper = StreamWrapper(measureGasPath);
-    auto benchmarkStreamWrapper = StreamWrapper(benchmarkPath);
+    auto statStreamWrapper = OStreamWrapper(measureGasPath);
+    auto benchmarkStreamWrapper = OStreamWrapper(benchmarkPath);
     InstructionsBenchmark instructionsBenchmark(benchmarkGranularity);
 
     auto analysisEnv = std::make_shared<AnalysisEnv>(statStreamWrapper.getStream(),

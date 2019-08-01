@@ -91,9 +91,10 @@ int main(int argc, char** argv)
     uint64_t execCount = 1;
     bytes data;
     std::string metadataPath;
-    std::string code;
     Mode mode = Mode::Benchmark;
     std::string outputPath("-");
+    std::string programsPath;
+    uint64_t programsIndex = 0;
     bool warmup = true;
     bool dropCache = false;
     bool alwaysDropCache = false;
@@ -127,8 +128,6 @@ int main(int argc, char** argv)
         "<a> Transaction sender should be <a> (default: 0000...0069).");
     addTransactionOption("origin", po::value<Address>(),
         "<a> Transaction origin should be <a> (default: 0000...0069).");
-    addTransactionOption("code", po::value<string>(),
-        "<d> Contract code <d>. Makes transaction a call to this contract");
 
     po::options_description networkOptions("Network options", c_lineWidth);
     networkOptions.add_options()("network", po::value<string>(),
@@ -155,6 +154,8 @@ int main(int argc, char** argv)
     addGeneralOption("always-drop-cache", "Drop caches before each benchmark execution");
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
     addGeneralOption("output-path", po::value<std::string>(), "<p> Set the path to save results");
+    addGeneralOption("programs-path", po::value<std::string>(), "<p> Set the path of the programs to benchmark");
+    addGeneralOption("program-index", po::value<uint64_t>(), "<p> The index (line number) of the programs to benchmark");
 
     po::options_description gaOptions("Genetic algorithm options", c_lineWidth);
     auto addGaOption = gaOptions.add_options();
@@ -285,10 +286,12 @@ int main(int argc, char** argv)
         originalBlockHeader.setGasLimit((vm["gas-limit"].as<u256>()).convert_to<int64_t>());
     if (vm.count("value"))
         value = vm["value"].as<u256>();
-    if (vm.count("code"))
-        code = vm["code"].as<std::string>();
     if (vm.count("exec-count"))
         execCount = vm["exec-count"].as<uint64_t>();
+    if (vm.count("programs-index"))
+        programsIndex = vm["programs-index"].as<uint64_t>();
+    if (vm.count("programs-path"))
+        programsPath = vm["programs-path"].as<std::string>();
     if (vm.count("metadata-path"))
         metadataPath = vm["metadata-path"].as<std::string>();
     if (vm.count("output-path"))
@@ -351,23 +354,68 @@ int main(int argc, char** argv)
 
     if (mode == Mode::Benchmark)
     {
-        if (code.empty() || code == "-")
+        if (programsPath.empty())
         {
-            std::cin >> code;
-        }
-        if (code.empty())
-        {
-            std::cerr << "you must provide code to benchmark" << std::endl;
+            std::cerr << "'programs-path' should be set to benchmark" << std::endl;
             return AlethErrors::ArgumentProcessingFailure;
-
         }
-        auto codeBytes = fromHex(code, WhenError::Throw);
-        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCache, alwaysDropCache);
-        auto results = benchmarkCode(execEnv, codeBytes, benchmarkConfig);
-        auto jsonResults = results.toJson();
-        jsonResults["block_number"] = originalBlockHeader.number();
 
-        auto outputStreamWrapper = StreamWrapper(outputPath);
+        std::string gzipExt = ".gz";
+        bool isGzip = programsPath.compare(programsPath.size() - gzipExt.size(), gzipExt.size(), gzipExt) == 0;
+
+        auto flags = ios_base::in;
+        if (isGzip)
+        {
+            flags |= ios_base::binary;
+        }
+
+        auto inWrapper = IStreamWrapper(programsPath);
+        auto& inputStream = inWrapper.getStream();
+
+        std::string line;
+        for (uint64_t i = 0; std::getline(inputStream, line) && i < programsIndex; i++);
+
+        if (line.empty())
+        {
+            std::cerr << "line number " << programsIndex << " not found in " << programsPath << std::endl;
+            return AlethErrors::ArgumentProcessingFailure;
+        }
+
+        Json::Value root;
+        Json::Reader reader;
+        if (!reader.parse(line, root))
+        {
+            std::cerr << "could not parse JSON" << std::endl;
+            return AlethErrors::ArgumentProcessingFailure;
+        }
+
+        if (!(root.isMember("programs") && root["programs"].isArray()))
+        {
+            std::cerr << "JSON not formatted correctly, should contain 'programs' key" << std::endl;
+            return AlethErrors::ArgumentProcessingFailure;
+        }
+
+        auto& jsonPrograms = root["programs"];
+
+        std::vector<bytes> programs;
+        for (Json::Value::ArrayIndex i = 0; i != jsonPrograms.size(); i++)
+        {
+            auto& jsonProgram = jsonPrograms[i];
+            if (!(jsonProgram.isMember("program") && jsonProgram["program"].isMember("code")))
+            {
+                std::cerr << "JSON not formatted correctly, should contain 'programs[n].program.code' key" << std::endl;
+                return AlethErrors::ArgumentProcessingFailure;
+            }
+            auto codeHex = jsonProgram["program"]["code"].asString();
+            programs.push_back(fromHex(codeHex));
+        }
+
+        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCache, alwaysDropCache);
+        auto results = benchmarkCodes(execEnv, programs, benchmarkConfig);
+        auto jsonResults = results.toJson(true);
+        jsonResults["blockNumber"] = originalBlockHeader.number();
+
+        auto outputStreamWrapper = OStreamWrapper(outputPath, std::ios_base::trunc);
         outputStreamWrapper.getStream() << jsonResults;
     }
     else if (mode == Mode::Search)
@@ -398,7 +446,7 @@ int main(int argc, char** argv)
 
         auto programGenerator = std::make_shared<ProgramGenerator>(instructionsMetadata, seed);
 
-        auto statStreamWrapper = StreamWrapper(outputPath);
+        auto statStreamWrapper = OStreamWrapper(outputPath);
 
         GeneticEngine geneticEngine(config, programGenerator, statStreamWrapper.getStream());
         std::cerr << "Running for " << config.generationsCount << " generations" << std::endl;
@@ -409,7 +457,7 @@ int main(int argc, char** argv)
         requireRoot("must be root to benchmark cache");
 
         auto programGenerator = std::make_shared<ProgramGenerator>(seed);
-        auto outputStreamWrapper = StreamWrapper(outputPath);
+        auto outputStreamWrapper = OStreamWrapper(outputPath);
         auto& ostream = outputStreamWrapper.getStream();
         Json::StreamWriterBuilder builder;
         builder.settings_["indentation"] = "";
