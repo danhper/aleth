@@ -25,18 +25,21 @@ namespace eth
 BenchmarkResults::BenchmarkResults() : BenchmarkResults(1) {}
 
 BenchmarkResults::BenchmarkResults(uint64_t granularity)
-  : m_granularity(granularity), m_currentMeasurement(0), m_currentMeasurementCount(0)
+  : m_granularity(granularity),
+    m_currentMeasurement(BenchmarkMeasurement(0, 0)),
+    m_currentMeasurementCount(0)
 {}
 
-void BenchmarkResults::addMeasurement(uint64_t measurement)
+void BenchmarkResults::addMeasurement(BenchmarkMeasurement measurement)
 {
     if (m_currentMeasurementCount + 1 >= m_granularity)
     {
         m_currentMeasurement += measurement;
-        auto normalizedMeasurement = static_cast<double>(m_currentMeasurement) / m_granularity;
+        auto normalizedMeasurement = m_currentMeasurement / m_granularity;
         m_measurements.push_back(normalizedMeasurement);
-        m_acc(normalizedMeasurement);
-        m_currentMeasurement = 0;
+        m_accTime(normalizedMeasurement.time);
+        m_accGas(normalizedMeasurement.gas.convert_to<double>());
+        m_currentMeasurement = BenchmarkMeasurement(0, 0);
         m_currentMeasurementCount = 0;
     }
     else
@@ -46,42 +49,29 @@ void BenchmarkResults::addMeasurement(uint64_t measurement)
     }
 }
 
-uint64_t BenchmarkResults::count() const
-{
-    return boost::accumulators::count(m_acc);
-}
-
-double BenchmarkResults::mean() const
-{
-    return boost::accumulators::mean(m_acc);
-}
-
-double BenchmarkResults::variance() const
-{
-    return boost::accumulators::variance(m_acc);
-}
-
-double BenchmarkResults::stdev() const
-{
-    return std::sqrt(variance());
-}
 
 Json::Value BenchmarkResults::toJson(bool full) const
 {
     Json::Value result;
     result["count"] = count();
     result["granularity"] = granularity();
-    result["mean"] = mean();
-    result["variance"] = variance();
-    result["stdev"] = stdev();
+    result["timeMean"] = mean();
+    result["timeVariance"] = variance();
+    result["timeStdev"] = stdev();
+    result["gasMean"] = gasMean();
+    result["gasStdev"] = gasStdev();
+    result["throughputMean"] = gasMean() / mean();
     if (full)
     {
-        auto measurements = Json::Value(Json::arrayValue);
+        auto times = Json::Value(Json::arrayValue);
+        auto gas = Json::Value(Json::arrayValue);
         for (auto measurement : m_measurements)
         {
-            measurements.append(measurement);
+            times.append(measurement.time);
+            gas.append(measurement.gas.convert_to<double>());
         }
-        result["measurements"] = measurements;
+        result["times"] = times;
+        result["gas"] = times;
     }
     return result;
 }
