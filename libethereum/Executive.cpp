@@ -536,7 +536,7 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
     auto& benchmarking = m_benchmarking;
     auto& logger = m_warningLogger;
     return [&start, &end, &benchmark, &benchmarking, &logger](uint64_t /* steps */,
-               uint64_t /* PC */, Instruction inst, bigint /* newMemSize */, bigint /* gasCost */,
+               uint64_t /* PC */, Instruction inst, bigint /* newMemSize */, bigint gasCost,
                bigint /* gas */, VMFace const* _vm, ExtVMFace const* /* voidExt */) {
         auto vm = dynamic_cast<LegacyVM const*>(_vm);
         const auto& stack = vm->stack();
@@ -552,7 +552,7 @@ OnOpFunc Executive::benchmarkInstructionsAfterOp(InstructionsBenchmark& benchmar
                 ellapsed = 0;
             }
             auto einst = fromInstruction(inst, stack);
-            benchmark.addMeasurement(einst, ellapsed);
+            benchmark.addMeasurement(einst, BenchmarkMeasurement(ellapsed, gasCost));
         }
     };
 }
