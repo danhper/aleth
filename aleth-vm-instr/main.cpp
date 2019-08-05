@@ -102,8 +102,9 @@ int main(int argc, char** argv)
     bool alwaysDropCache = false;
 
     uint32_t populationSize = 1000;
-    uint32_t initialProgramSize = 10000;
+    uint32_t initialProgramSize = 2000;
     uint32_t minimumProgramSize = 1000;
+    uint32_t maximumProgramSize = 5000;
     uint32_t generationsCount = 1000;
     uint32_t mutationsCount = 5;
     bool cacheResults = false;
@@ -166,6 +167,7 @@ int main(int argc, char** argv)
     addGaOption("population-size", po::value<uint32_t>(), "<n> Set population size");
     addGaOption("init-program-size", po::value<uint32_t>(), "<n> Set initial program size");
     addGaOption("min-program-size", po::value<uint32_t>(), "<n> Set minimum program size");
+    addGaOption("max-program-size", po::value<uint32_t>(), "<n> Set maximum program size");
     addGaOption("cache-results", "Cache the results");
     addGaOption("generations-count", po::value<uint32_t>(), "<n> Set numbers of generation to run");
     addGaOption("mutations-count", po::value<uint32_t>(), "<n> Set numbers of mutations per sample");
@@ -325,6 +327,8 @@ int main(int argc, char** argv)
         initialProgramSize = vm["init-program-size"].as<uint32_t>();
     if (vm.count("min-program-size"))
         minimumProgramSize = vm["min-program-size"].as<uint32_t>();
+    if (vm.count("max-program-size"))
+        maximumProgramSize = vm["max-program-size"].as<uint32_t>();
     if (vm.count("generations-count"))
         generationsCount = vm["generations-count"].as<uint32_t>();
     if (vm.count("mutations-count"))
@@ -450,6 +454,7 @@ int main(int argc, char** argv)
             .populationSize = populationSize,
             .initialProgramSize = initialProgramSize,
             .minimumProgramSize = minimumProgramSize,
+            .maximumProgramSize = maximumProgramSize,
             .generationsCount = generationsCount,
             .mutationsCount = mutationsCount,
             .eliteRatio = eliteRatio,
