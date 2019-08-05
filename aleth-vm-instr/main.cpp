@@ -97,6 +97,7 @@ int main(int argc, char** argv)
     uint64_t startIndex = 0;
     uint64_t endIndex = 0;
     bool warmup = true;
+    uint16_t initialWarmupCount = 5;
     bool dropCache = false;
     bool alwaysDropCache = false;
 
@@ -150,7 +151,8 @@ int main(int argc, char** argv)
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
     addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
-    addGeneralOption("no-warmup", "Do not warmup before execution");
+    addGeneralOption("initial-warmup-count", po::value<uint16_t>(), "Number of times to run warmup before the first measurement");
+    addGeneralOption("no-warmup", "Do not warmup before each block execution");
     addGeneralOption("drop-cache", "Drop caches before starting benchmark");
     addGeneralOption("always-drop-cache", "Drop caches before each benchmark execution");
     addGeneralOption("metadata-path", po::value<std::string>(), "<p> Set the path for the metadata");
@@ -303,6 +305,8 @@ int main(int argc, char** argv)
     if (vm.count("output-path"))
         outputPath = vm["output-path"].as<std::string>();
 
+    if (vm.count("initial-warmup-count"))
+        initialWarmupCount = vm["initial-warmup-count"].as<uint16_t>();
     if (vm.count("no-warmup"))
         warmup = false;
     if (vm.count("drop-cache"))
@@ -421,7 +425,7 @@ int main(int argc, char** argv)
         }
 
         auto outputStreamWrapper = OStreamWrapper(outputPath, std::ios_base::trunc);
-        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCache, alwaysDropCache);
+        BenchmarkConfig benchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, alwaysDropCache);
         auto blockNumber = originalBlockHeader.number();
         for (auto& programs : blocks)
         {
@@ -441,7 +445,7 @@ int main(int argc, char** argv)
         }
 
         GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
-        BenchmarkConfig benchmarkConfig(execCount, debug, warmup, dropCache);
+        BenchmarkConfig benchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache);
         GeneticEngine::Config config{
             .populationSize = populationSize,
             .initialProgramSize = initialProgramSize,
@@ -481,8 +485,8 @@ int main(int argc, char** argv)
                 std::cout << "progress: " << i << "/" << populationSize << std::endl;
             }
 
-            auto withCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCache, false);
-            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, warmup, dropCache, true);
+            auto withCacheConfig = BenchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, false);
+            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, true);
             auto program = programGenerator->generateInitialProgram(initialProgramSize);
             auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), withCacheConfig);
             auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), withoutCacheConfig);
