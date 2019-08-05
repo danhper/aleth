@@ -97,7 +97,7 @@ int main(int argc, char** argv)
     uint64_t startIndex = 0;
     uint64_t endIndex = 0;
     bool warmup = true;
-    uint16_t initialWarmupCount = 5;
+    uint16_t initialWarmupCount = 10;
     bool dropCache = false;
     bool alwaysDropCache = false;
 
