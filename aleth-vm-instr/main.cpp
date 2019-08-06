@@ -420,9 +420,9 @@ int main(int argc, char** argv)
             auto& jsonPrograms = root["programs"];
 
             std::vector<bytes> programs;
-            for (Json::Value::ArrayIndex i = 0; i != jsonPrograms.size(); i++)
+            for (Json::Value::ArrayIndex j = 0; j != jsonPrograms.size(); j++)
             {
-                auto& jsonProgram = jsonPrograms[i];
+                auto& jsonProgram = jsonPrograms[j];
                 if (!(jsonProgram.isMember("program") && jsonProgram["program"].isMember("code")))
                 {
                     std::cerr << "JSON not formatted correctly, should contain 'programs[n].program.code' key" << std::endl;
@@ -430,9 +430,18 @@ int main(int argc, char** argv)
                 }
                 auto codeHex = jsonProgram["program"]["code"].asString();
                 programs.push_back(fromHex(codeHex));
+
+                if (i == startIndex && j == 0)
+                {
+                    initialProgramSize = static_cast<uint32_t>(jsonProgram["program"]["size"].asUInt64());
+                }
             }
 
             blocks.push_back(programs);
+            if (i == 0)
+            {
+                populationSize = programs.size();
+            }
         }
 
         auto outputStreamWrapper = OStreamWrapper(outputPath, std::ios_base::trunc);
