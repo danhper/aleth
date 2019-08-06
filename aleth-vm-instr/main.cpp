@@ -370,6 +370,13 @@ int main(int argc, char** argv)
     builder.settings_["indentation"] = "";
     std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
 
+    std::map<Instruction, InstructionMetadata> instructionsMetadata;
+    if (!metadataPath.empty())
+    {
+        instructionsMetadata = parseInstructionsFromFile(metadataPath);
+    }
+    auto programGenerator = std::make_shared<ProgramGenerator>(instructionsMetadata, seed);
+
     if (mode == Mode::Benchmark)
     {
         if (programsPath.empty())
@@ -431,6 +438,13 @@ int main(int argc, char** argv)
         auto outputStreamWrapper = OStreamWrapper(outputPath, std::ios_base::trunc);
         BenchmarkConfig benchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, alwaysDropCache);
         auto blockNumber = originalBlockHeader.number();
+
+        if (initialWarmupCount > 0)
+        {
+            runInitialWarmup(programGenerator, execEnv, benchmarkConfig, initialProgramSize,
+                populationSize, initialWarmupCount);
+        }
+
         for (auto& programs : blocks)
         {
             auto results = benchmarkCodes(execEnv, programs, benchmarkConfig);
@@ -442,12 +456,6 @@ int main(int argc, char** argv)
     }
     else if (mode == Mode::Search)
     {
-        std::map<Instruction, InstructionMetadata> instructionsMetadata;
-        if (!metadataPath.empty())
-        {
-            instructionsMetadata = parseInstructionsFromFile(metadataPath);
-        }
-
         GeneticEngine::TournamentSelectionConfig tournamentConfig(tournamentSelectionRatio, tournamentSelectionProb);
         BenchmarkConfig benchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache);
         GeneticEngine::Config config{
@@ -466,8 +474,6 @@ int main(int argc, char** argv)
             .targetMetric = targetMetric,
             .benchmarkConfig = benchmarkConfig,
         };
-
-        auto programGenerator = std::make_shared<ProgramGenerator>(instructionsMetadata, seed);
 
         auto statStreamWrapper = OStreamWrapper(outputPath);
 
