@@ -131,7 +131,7 @@ std::vector<std::vector<bytes>> loadPrograms(const std::string& programsPath, ui
         }
 
         blocks.push_back(programs);
-        if (i == 0)
+        if (i == startIndex)
         {
             populationSize = programs.size();
         }
