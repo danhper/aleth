@@ -75,6 +75,69 @@ void requireRoot(const std::string& message)
 }
 
 
+std::vector<std::vector<bytes>> loadPrograms(const std::string& programsPath, uint64_t startIndex,
+    uint64_t endIndex, uint32_t& initialProgramSize, uint32_t& populationSize)
+{
+    auto inWrapper = IStreamWrapper(programsPath);
+    auto& inputStream = inWrapper.getStream();
+    std::string line;
+
+    std::vector<std::vector<bytes>> blocks;
+    for (uint64_t i = startIndex; i <= endIndex; i++)
+    {
+        std::getline(inputStream, line);
+
+        if (line.empty())
+        {
+            std::cerr << "line number " << i << " not found in " << programsPath << std::endl;
+            throw dev::eth::AlethErrors::ArgumentProcessingFailure;
+        }
+
+        Json::Value root;
+        Json::Reader reader;
+        if (!reader.parse(line, root))
+        {
+            std::cerr << "could not parse JSON" << std::endl;
+            throw dev::eth::AlethErrors::ArgumentProcessingFailure;
+        }
+
+        if (!(root.isMember("programs") && root["programs"].isArray()))
+        {
+            std::cerr << "JSON not formatted correctly, should contain 'programs' key" << std::endl;
+            throw dev::eth::AlethErrors::ArgumentProcessingFailure;
+        }
+
+        auto& jsonPrograms = root["programs"];
+
+        std::vector<bytes> programs;
+        for (Json::Value::ArrayIndex j = 0; j != jsonPrograms.size(); j++)
+        {
+            auto& jsonProgram = jsonPrograms[j];
+            if (!(jsonProgram.isMember("program") && jsonProgram["program"].isMember("code")))
+            {
+                std::cerr
+                    << "JSON not formatted correctly, should contain 'programs[n].program.code' key"
+                    << std::endl;
+                throw dev::eth::AlethErrors::ArgumentProcessingFailure;
+            }
+            auto codeHex = jsonProgram["program"]["code"].asString();
+            programs.push_back(fromHex(codeHex));
+
+            if (i == startIndex && j == 0)
+            {
+                initialProgramSize =
+                    static_cast<uint32_t>(jsonProgram["program"]["size"].asUInt64());
+            }
+        }
+
+        blocks.push_back(programs);
+        if (i == 0)
+        {
+            populationSize = programs.size();
+        }
+    }
+    return blocks;
+}
 }
 
 int main(int argc, char** argv)
@@ -385,64 +448,8 @@ int main(int argc, char** argv)
             return AlethErrors::ArgumentProcessingFailure;
         }
 
-        auto inWrapper = IStreamWrapper(programsPath);
-        auto& inputStream = inWrapper.getStream();
-
-        std::string line;
-        for (uint64_t i = 0; i < startIndex && std::getline(inputStream, line); i++);
-
-        std::vector<std::vector<bytes>> blocks;
-
-        for (uint64_t i = startIndex; i <= endIndex; i++)
-        {
-            std::getline(inputStream, line);
-
-            if (line.empty())
-            {
-                std::cerr << "line number " << i << " not found in " << programsPath << std::endl;
-                return AlethErrors::ArgumentProcessingFailure;
-            }
-
-            Json::Value root;
-            Json::Reader reader;
-            if (!reader.parse(line, root))
-            {
-                std::cerr << "could not parse JSON" << std::endl;
-                return AlethErrors::ArgumentProcessingFailure;
-            }
-
-            if (!(root.isMember("programs") && root["programs"].isArray()))
-            {
-                std::cerr << "JSON not formatted correctly, should contain 'programs' key" << std::endl;
-                return AlethErrors::ArgumentProcessingFailure;
-            }
-
-            auto& jsonPrograms = root["programs"];
-
-            std::vector<bytes> programs;
-            for (Json::Value::ArrayIndex j = 0; j != jsonPrograms.size(); j++)
-            {
-                auto& jsonProgram = jsonPrograms[j];
-                if (!(jsonProgram.isMember("program") && jsonProgram["program"].isMember("code")))
-                {
-                    std::cerr << "JSON not formatted correctly, should contain 'programs[n].program.code' key" << std::endl;
-                    return AlethErrors::ArgumentProcessingFailure;
-                }
-                auto codeHex = jsonProgram["program"]["code"].asString();
-                programs.push_back(fromHex(codeHex));
-
-                if (i == startIndex && j == 0)
-                {
-                    initialProgramSize = static_cast<uint32_t>(jsonProgram["program"]["size"].asUInt64());
-                }
-            }
-
-            blocks.push_back(programs);
-            if (i == 0)
-            {
-                populationSize = programs.size();
-            }
-        }
+        auto blocks =
+            loadPrograms(programsPath, startIndex, endIndex, initialProgramSize, populationSize);
 
         auto outputStreamWrapper = OStreamWrapper(outputPath, std::ios_base::trunc);
         BenchmarkConfig benchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, alwaysDropCache);
@@ -497,20 +504,39 @@ int main(int argc, char** argv)
         auto outputStreamWrapper = OStreamWrapper(outputPath);
         auto& ostream = outputStreamWrapper.getStream();
 
-        for (size_t i = 0; i < populationSize; i++)
+        std::vector<bytes> programs;
+        if (programsPath.empty())
         {
+            for (size_t i = 0; i < populationSize; i++)
+            {
+                programs.push_back(
+                    programGenerator->generateInitialProgram(initialProgramSize).toBytes());
+            }
+        }
+        else
+        {
+            auto blocks = loadPrograms(
+                programsPath, startIndex, endIndex, initialProgramSize, populationSize);
+            programs = blocks[0];
+        }
+
+        auto withCacheConfig =
+            BenchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, false);
+        auto withoutCacheConfig =
+            BenchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, true);
+        for (size_t i = 0; i < programs.size(); i++)
+        {
+            const auto& program = programs[i];
+
             if (i % 10 == 0)
             {
                 std::cout << "progress: " << i << "/" << populationSize << std::endl;
             }
 
-            auto withCacheConfig = BenchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, false);
-            auto withoutCacheConfig = BenchmarkConfig(execCount, debug, initialWarmupCount, warmup, dropCache, true);
-            auto program = programGenerator->generateInitialProgram(initialProgramSize);
-            auto resultsWithCache = benchmarkCode(execEnv, program.toBytes(), withCacheConfig);
-            auto resultsWithoutCache = benchmarkCode(execEnv, program.toBytes(), withoutCacheConfig);
+            auto resultsWithCache = benchmarkCode(execEnv, program, withCacheConfig);
+            auto resultsWithoutCache = benchmarkCode(execEnv, program, withoutCacheConfig);
             Json::Value result;
-            result["code"] = program.toHex();
+            result["code"] = toHex(program);
             result["with_cache"] = resultsWithCache.toJson();
             result["without_cache"] = resultsWithoutCache.toJson();
             writer->write(result, &ostream);
