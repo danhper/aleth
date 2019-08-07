@@ -494,7 +494,6 @@ int main(int argc, char** argv)
     {
         requireRoot("must be root to benchmark cache");
 
-        auto programGenerator = std::make_shared<ProgramGenerator>(seed);
         auto outputStreamWrapper = OStreamWrapper(outputPath);
         auto& ostream = outputStreamWrapper.getStream();
 
