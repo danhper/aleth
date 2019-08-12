@@ -182,6 +182,10 @@ int main(int argc, char** argv)
     bytes b = contents(configFile);
 
 #ifdef ETH_MEASURE_GAS
+    bool allowFutureBlocks = false;
+    bool forceMinimumDifficulty = false;
+    u256 minimumDifficulty = 0;
+
     std::string measureGasPath("gas-measurements.jsonl.gz");
     std::string benchmarkPath("benchmark.jsonl");
     uint64_t benchmarkGranularity = 1000;
@@ -346,6 +350,13 @@ int main(int argc, char** argv)
 
 
 #ifdef ETH_MEASURE_GAS
+    addMininigOption("minimum-difficulty", po::value<u256>()->value_name("<difficulty>"),
+        ("minimum mining difficulty"));
+    addMininigOption("force-minimum-difficulty", po::bool_switch(&forceMinimumDifficulty),
+        ("force difficulty to stay at the minimum mining difficulty"));
+    addMininigOption("allow-future-blocks", po::bool_switch(&allowFutureBlocks),
+        ("allows future blocks"));
+
     po::options_description analysisOptions("ANALYSIS OPTIONS", c_lineWidth);
     auto addAnalysisOptions = analysisOptions.add_options();
     addAnalysisOptions("gas-measurements-file", po::value<string>()->value_name("<path>"),
@@ -718,6 +729,10 @@ int main(int argc, char** argv)
     }
 
 #ifdef ETH_MEASURE_GAS
+    if (vm.count("minimum-difficulty"))
+    {
+        minimumDifficulty = vm["minimum-difficulty"].as<u256>();
+    }
     if (vm.count("gas-measurements-file"))
     {
         measureGasPath = vm["gas-measurements-file"].as<string>();
@@ -802,6 +817,12 @@ int main(int argc, char** argv)
         chainParams.allowFutureBlocks = true;
 
 #ifdef ETH_MEASURE_GAS
+    if (allowFutureBlocks)
+        chainParams.allowFutureBlocks = true;
+    if (minimumDifficulty > 0)
+        chainParams.minimumDifficulty = minimumDifficulty;
+    chainParams.forceMinimumDifficulty = forceMinimumDifficulty;
+
     auto statStreamWrapper = OStreamWrapper(measureGasPath);
     auto benchmarkStreamWrapper = OStreamWrapper(benchmarkPath);
     InstructionsBenchmark instructionsBenchmark(benchmarkGranularity);

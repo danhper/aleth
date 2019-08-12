@@ -191,6 +191,13 @@ u256 calculateEthashDifficulty(
     auto const& difficultyBoundDivisor = _chainParams.difficultyBoundDivisor;
     auto const& durationLimit = _chainParams.durationLimit;
 
+#ifdef ETH_MEASURE_GAS
+    if (_chainParams.forceMinimumDifficulty)
+    {
+        return _chainParams.minimumDifficulty;
+    }
+#endif
+
     bigint target;  // stick to a bigint for the target. Don't want to risk going negative.
     if (_bi.number() < _chainParams.homesteadForkBlock)
         // Frontier-era difficulty adjustment

@@ -87,11 +87,18 @@ void Ethash::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _p
 
     if (_parent)
     {
+#ifdef ETH_MEASURE_GAS
+        if (!chainParams().forceMinimumDifficulty)
+        {
+#endif
         // Check difficulty is correct given the two timestamps.
         auto expected = calculateEthashDifficulty(chainParams(), _bi, _parent);
         auto difficulty = _bi.difficulty();
         if (difficulty != expected)
             BOOST_THROW_EXCEPTION(InvalidDifficulty() << RequirementError((bigint)expected, (bigint)difficulty));
+#ifdef ETH_MEASURE_GAS
+        }
+#endif
     }
 
     // check it hashes according to proof of work or that it's the genesis block.
