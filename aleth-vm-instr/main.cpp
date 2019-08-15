@@ -174,7 +174,7 @@ int main(int argc, char** argv)
     double eliteRatio = 0.1;
     double tournamentSelectionProb = 0.4;
     double tournamentSelectionRatio = 0.2;
-    GeneticEngine::Metric targetMetric = GeneticEngine::Metric::Mean;
+    GeneticEngine::Metric targetMetric = GeneticEngine::Metric::ThroughputMedian;
 
     Ethash::init();
     NoProof::init();
@@ -407,13 +407,17 @@ int main(int argc, char** argv)
     if (vm.count("target-metric"))
     {
         std::string targetMetricName = vm["target-metric"].as<std::string>();
-        if (targetMetricName == "mean" )
-            targetMetric = GeneticEngine::Metric::Mean;
-        else if (targetMetricName == "median" )
-            targetMetric = GeneticEngine::Metric::Median;
+        if (targetMetricName == "throughput-mean" )
+            targetMetric = GeneticEngine::Metric::ThroughputMean;
+        else if (targetMetricName == "throughput-median" )
+            targetMetric = GeneticEngine::Metric::ThroughputMedian;
+        else if (targetMetricName == "time-mean" )
+            targetMetric = GeneticEngine::Metric::TimeMean;
+        else if (targetMetricName == "time-median" )
+            targetMetric = GeneticEngine::Metric::TimeMedian;
         else
         {
-            std::cerr << "target-metric should be 'mean' or 'median', got '" << targetMetricName << "'" << std::endl;
+            std::cerr << "target-metric should be 'throughput-mean', 'throughput-median', 'time-mean' or 'time-median', got '" << targetMetricName << "'" << std::endl;
             return AlethErrors::UnknownArgument;
         }
     }
