@@ -152,6 +152,7 @@ int main(int argc, char** argv)
     u256 gasPrice = 0;
     Network networkName = Network::MainNetwork;
     uint64_t execCount = 1;
+    uint64_t globalExecCount = 1;
     bytes data;
     std::string metadataPath;
     Mode mode = Mode::Benchmark;
@@ -357,6 +358,8 @@ int main(int argc, char** argv)
         value = vm["value"].as<u256>();
     if (vm.count("exec-count"))
         execCount = vm["exec-count"].as<uint64_t>();
+    if (vm.count("global-exec-count"))
+        globalExecCount = vm["global-exec-count"].as<uint64_t>();
     if (vm.count("start-index"))
         startIndex = vm["start-index"].as<uint64_t>();
     if (vm.count("end-index"))
@@ -465,13 +468,17 @@ int main(int argc, char** argv)
                 populationSize, initialWarmupCount);
         }
 
-        for (auto& programs : blocks)
+        for (uint64_t i = 0; i < globalExecCount; i++)
         {
-            auto results = benchmarkCodes(execEnv, programs, benchmarkConfig);
-            auto jsonResults = results.toJson(true);
-            jsonResults["blockNumber"] = blockNumber;
-            writer->write(jsonResults, &outputStreamWrapper.getStream());
-            outputStreamWrapper.getStream() << std::endl;
+            for (auto& programs : blocks)
+            {
+                auto results = benchmarkCodes(execEnv, programs, benchmarkConfig);
+                auto jsonResults = results.toJson(true);
+                jsonResults["blockNumber"] = blockNumber;
+                jsonResults["execNumber"] = i;
+                writer->write(jsonResults, &outputStreamWrapper.getStream());
+                outputStreamWrapper.getStream() << std::endl;
+            }
         }
     }
     else if (mode == Mode::Search)
