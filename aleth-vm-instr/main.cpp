@@ -216,6 +216,7 @@ int main(int argc, char** argv)
     addGeneralOption("number", po::value<int64_t>(), "<n> Set number");
     addGeneralOption("timestamp", po::value<int64_t>(), "<n> Set timestamp");
     addGeneralOption("exec-count", po::value<uint64_t>(), "<n> Set execution count for input");
+    addGeneralOption("global-exec-count", po::value<uint64_t>(), "<n> Set global execution count for input");
     addGeneralOption("initial-warmup-count", po::value<uint16_t>(), "Number of times to run warmup before the first measurement");
     addGeneralOption("no-warmup", "Do not warmup before each block execution");
     addGeneralOption("drop-cache", "Drop caches before starting benchmark");
