@@ -30,6 +30,10 @@
 #include "BlockHeader.h"
 #include "Common.h"
 
+#ifdef ETH_MEASURE_GAS
+#include <chrono>
+#endif
+
 namespace dev
 {
 namespace eth
@@ -148,6 +152,20 @@ public:
     void verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const override;
     StringHashMap jsInfo(BlockHeader const& _bi) const override;
 };
+
+#ifdef ETH_MEASURE_GAS
+
+class DelayedNoProof: public eth::NoProof
+{
+public:
+    static std::string name() { return "DelayedNoProof"; }
+    static void init();
+    void generateSeal(BlockHeader const& _bi) override;
+private:
+	decltype(std::chrono::steady_clock::now()) m_lastBlockTime = std::chrono::steady_clock::now();
+};
+
+#endif
 
 u256 calculateEthashDifficulty(
     ChainOperationParams const& _chainParams, BlockHeader const& _bi, BlockHeader const& _parent);

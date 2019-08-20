@@ -121,6 +121,10 @@ int main(int argc, char** argv)
     Ethash::init();
     NoProof::init();
 
+#ifdef ETH_MEASURE_GAS
+    DelayedNoProof::init();
+#endif
+
     /// Operating mode.
     OperationMode mode = OperationMode::Node;
 
@@ -183,8 +187,8 @@ int main(int argc, char** argv)
 
 #ifdef ETH_MEASURE_GAS
     bool allowFutureBlocks = false;
-    bool forceMinimumDifficulty = false;
     u256 minimumDifficulty = 0;
+    std::string sealEngineName(Ethash::name());
 
     std::string measureGasPath("gas-measurements.jsonl.gz");
     std::string benchmarkPath("benchmark.jsonl");
@@ -352,8 +356,8 @@ int main(int argc, char** argv)
 #ifdef ETH_MEASURE_GAS
     addMininigOption("minimum-difficulty", po::value<u256>()->value_name("<difficulty>"),
         ("minimum mining difficulty"));
-    addMininigOption("force-minimum-difficulty", po::bool_switch(&forceMinimumDifficulty),
-        ("force difficulty to stay at the minimum mining difficulty"));
+    addMininigOption("seal-engine", po::value<std::string>()->value_name("<name>"),
+        ("name of the seal engine to use"));
     addMininigOption("allow-future-blocks", po::bool_switch(&allowFutureBlocks),
         ("allows future blocks"));
 
@@ -730,25 +734,17 @@ int main(int argc, char** argv)
 
 #ifdef ETH_MEASURE_GAS
     if (vm.count("minimum-difficulty"))
-    {
         minimumDifficulty = vm["minimum-difficulty"].as<u256>();
-    }
+    if (vm.count("seal-engine"))
+        sealEngineName = vm["seal-engine"].as<string>();
     if (vm.count("gas-measurements-file"))
-    {
         measureGasPath = vm["gas-measurements-file"].as<string>();
-    }
     if (vm.count("benchmark-file"))
-    {
         benchmarkPath = vm["benchmark-file"].as<string>();
-    }
     if (vm.count("benchmark-granularity"))
-    {
         benchmarkGranularity = vm["benchmark-granularity"].as<uint64_t>();
-    }
     if (vm.count("benchmark-blocks-interval"))
-    {
         benchmarkBlocksInterval = vm["benchmark-blocks-interval"].as<int64_t>();
-    }
 #endif
 
     setupLogging(loggingOptions);
@@ -821,7 +817,7 @@ int main(int argc, char** argv)
         chainParams.allowFutureBlocks = true;
     if (minimumDifficulty > 0)
         chainParams.minimumDifficulty = minimumDifficulty;
-    chainParams.forceMinimumDifficulty = forceMinimumDifficulty;
+    chainParams.sealEngineName = sealEngineName;
 
     auto statStreamWrapper = OStreamWrapper(measureGasPath);
     auto benchmarkStreamWrapper = OStreamWrapper(benchmarkPath);

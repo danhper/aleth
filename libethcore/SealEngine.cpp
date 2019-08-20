@@ -19,6 +19,10 @@
 #include "TransactionBase.h"
 #include <libethcore/CommonJS.h>
 
+#ifdef ETH_MEASURE_GAS
+#include <thread>
+#endif
+
 using namespace std;
 namespace dev
 {
@@ -67,6 +71,30 @@ StringHashMap NoProof::jsInfo(BlockHeader const& _bi) const
 {
     return {{"difficulty", toJS(_bi.difficulty())}};
 }
+
+#ifdef ETH_MEASURE_GAS
+namespace
+{
+    constexpr auto minimumDelay = std::chrono::seconds(13);
+};
+
+void DelayedNoProof::init()
+{
+    ETH_REGISTER_SEAL_ENGINE(DelayedNoProof);
+}
+
+void DelayedNoProof::generateSeal(BlockHeader const& _bi)
+{
+    auto diff = std::chrono::steady_clock::now() - m_lastBlockTime;
+    if (diff < minimumDelay)
+    {
+        std::this_thread::sleep_for(minimumDelay - diff);
+    }
+    NoProof::generateSeal(_bi);
+    m_lastBlockTime = std::chrono::steady_clock::now();
+}
+
+#endif
 
 void SealEngineFace::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const
 {
@@ -190,13 +218,6 @@ u256 calculateEthashDifficulty(
     auto const& minimumDifficulty = _chainParams.minimumDifficulty;
     auto const& difficultyBoundDivisor = _chainParams.difficultyBoundDivisor;
     auto const& durationLimit = _chainParams.durationLimit;
-
-#ifdef ETH_MEASURE_GAS
-    if (_chainParams.forceMinimumDifficulty)
-    {
-        return _chainParams.minimumDifficulty;
-    }
-#endif
 
     bigint target;  // stick to a bigint for the target. Don't want to risk going negative.
     if (_bi.number() < _chainParams.homesteadForkBlock)

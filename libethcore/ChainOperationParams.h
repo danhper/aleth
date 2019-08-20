@@ -103,9 +103,6 @@ public:
     u256 difficultyBoundDivisor;
     u256 durationLimit;
     bool allowFutureBlocks = false;
-#ifdef ETH_MEASURE_GAS
-    bool forceMinimumDifficulty = false;
-#endif
 
     /// Precompiled contracts as specified in the chain params.
     std::unordered_map<Address, PrecompiledContract> precompiled;
