@@ -712,7 +712,11 @@ int main(int argc, char** argv)
         AccountManager::streamAccountHelp(cout);
         AccountManager::streamWalletHelp(cout);
         cout << clientDefaultMode << clientTransacting << clientNetworking << clientMining << minerOptions;
-        cout << importExportMode << dbOptions << vmOptions << loggingProgramOptions << generalOptions;
+        cout << importExportMode << dbOptions << vmOptions << loggingProgramOptions;
+#ifdef ETH_MEASURE_GAS
+        cout << analysisOptions;
+#endif
+        cout << generalOptions;
         return AlethErrors::Success;
     }
 

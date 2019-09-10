@@ -161,7 +161,14 @@ public:
     static std::string name() { return "DelayedNoProof"; }
     static void init();
     void generateSeal(BlockHeader const& _bi) override;
+	static void setMinimumDelay(std::chrono::seconds delay) {
+		m_minimumDelay = delay;
+	}
+	static std::chrono::seconds minimumDelay() {
+		return m_minimumDelay;
+	}
 private:
+	static std::chrono::seconds m_minimumDelay;
 	decltype(std::chrono::steady_clock::now()) m_lastBlockTime = std::chrono::steady_clock::now();
 };
 

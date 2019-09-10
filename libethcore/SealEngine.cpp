@@ -73,22 +73,22 @@ StringHashMap NoProof::jsInfo(BlockHeader const& _bi) const
 }
 
 #ifdef ETH_MEASURE_GAS
-namespace
-{
-    constexpr auto minimumDelay = std::chrono::seconds(13);
+
+namespace {
+    const std::chrono::seconds defaultMinimumDelay(13);
 };
 
 void DelayedNoProof::init()
 {
     ETH_REGISTER_SEAL_ENGINE(DelayedNoProof);
+    DelayedNoProof::setMinimumDelay(defaultMinimumDelay);
 }
 
 void DelayedNoProof::generateSeal(BlockHeader const& _bi)
 {
     auto diff = std::chrono::steady_clock::now() - m_lastBlockTime;
-    if (diff < minimumDelay)
-    {
-        std::this_thread::sleep_for(minimumDelay - diff);
+    if (diff < minimumDelay()) {
+        std::this_thread::sleep_for(minimumDelay() - diff);
     }
     NoProof::generateSeal(_bi);
     m_lastBlockTime = std::chrono::steady_clock::now();
