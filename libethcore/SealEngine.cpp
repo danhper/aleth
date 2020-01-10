@@ -94,6 +94,8 @@ void DelayedNoProof::generateSeal(BlockHeader const& _bi)
     m_lastBlockTime = std::chrono::steady_clock::now();
 }
 
+std::chrono::seconds DelayedNoProof::m_minimumDelay = defaultMinimumDelay;
+
 #endif
 
 void SealEngineFace::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const

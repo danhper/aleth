@@ -75,6 +75,7 @@ file(GLOB_RECURSE sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cpp" "*.h" "*.
 list(REMOVE_ITEM sources ${unittest_sources})
 if (NOT MEASURE_GAS)
     list(REMOVE_ITEM sources ${evmanalysis_sources})
+    list(REMOVE_ITEM sources ${gasexploiter_sources})
 endif ()
 
 # search for test names and create ctest tests
